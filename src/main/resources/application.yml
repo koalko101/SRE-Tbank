@@ -1,0 +1,9 @@
+test-data:
+  enabled: true
+
+items-on-pages:
+  count: 4
+
+spring:
+  application:
+    name: ticket-booking

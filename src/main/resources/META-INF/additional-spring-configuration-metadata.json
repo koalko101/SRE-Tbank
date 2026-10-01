@@ -1,0 +1,13 @@
+{"properties": [
+  {
+    "name": "test-data.enabled",
+    "type": "java.lang.Boolean",
+    "description": "Use test data",
+    "defaultValue": false
+  },
+  {
+    "name": "items-on-pages.count",
+    "type": "java.lang.Integer",
+    "description": "Items count on page"
+  }
+]}
