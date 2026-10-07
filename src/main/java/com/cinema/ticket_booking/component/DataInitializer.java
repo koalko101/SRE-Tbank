@@ -1,16 +1,5 @@
 package com.cinema.ticket_booking.component;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
-
 import com.cinema.ticket_booking.DTO.AgeRating;
 import com.cinema.ticket_booking.DTO.Cinema;
 import com.cinema.ticket_booking.DTO.Hall;
@@ -22,13 +11,23 @@ import com.cinema.ticket_booking.repository.HallRepository;
 import com.cinema.ticket_booking.repository.MovieRepository;
 import com.cinema.ticket_booking.repository.ScreeningRepository;
 import com.cinema.ticket_booking.repository.SeatRepository;
-
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
-
     private final CinemaRepository cinemaRepository;
     private final HallRepository hallRepository;
     private final ScreeningRepository screeningRepository;
@@ -36,295 +35,200 @@ public class DataInitializer implements CommandLineRunner {
     private final MovieRepository movieRepository;
 
     @Value("${test-data.enabled:false}")
-    private boolean useTestData;
+    private boolean enabled;
 
     @Override
     public void run(String... args) {
-        if (!useTestData) {
+        if (!enabled) {
             return;
         }
 
-        if (cinemaRepository.count() > 0) {
-            return;
+        List<Cinema> cinemas = cinemaRepository.findAll();
+        if (cinemas.isEmpty()) {
+            cinemas = cinemaRepository.saveAll(List.of(
+                    cinema("Октябрь", "ул. Советская, 18"),
+                    cinema("Москва", "пр. Независимости, 73"),
+                    cinema("Салют", "ул. Кальварийская, 24")
+            ));
         }
 
-        List<Cinema> cinemas = createCinemas();
-        List<Hall> halls = createHalls(cinemas);
-
-        createSeats(halls);
-
-        List<Movie> movies = createMovies();
-        createScreenings(halls, movies);
-    }
-
-    private List<Cinema> createCinemas() {
-        List<Cinema> cinemas = List.of(
-                createCinema(
-                        "Октябрь",
-                        "ул. Советская, 18"
-                ),
-                createCinema(
-                        "Москва",
-                        "пр. Независимости, 73"
-                ),
-                createCinema(
-                        "Салют",
-                        "ул. Кальварийская, 24"
-                ),
-                createCinema(
-                        "Аврора",
-                        "пр. Победителей, 9"
-                )
-        );
-
-        return cinemaRepository.saveAll(cinemas);
-    }
-
-    private Cinema createCinema(String name, String address) {
-        Cinema cinema = new Cinema();
-        cinema.setName(name);
-        cinema.setAddress(address);
-
-        return cinema;
-    }
-
-    private List<Hall> createHalls(List<Cinema> cinemas) {
-        List<Hall> halls = new ArrayList<>();
-
-        for (Cinema cinema : cinemas) {
-            for (int i = 1; i <= 3; i++) {
-                Hall hall = new Hall();
-                hall.setCinema(cinema);
-                hall.setName("Зал " + i);
-
-                halls.add(hall);
-            }
+        List<Hall> halls = hallRepository.findAll();
+        if (halls.isEmpty()) {
+            halls = createHalls(cinemas);
+        }
+        if (seatRepository.count() == 0) {
+            createSeats(halls);
         }
 
-        return hallRepository.saveAll(halls);
-    }
-
-    private void createSeats(List<Hall> halls) {
-        List<Seat> seats = new ArrayList<>();
-
-        for (Hall hall : halls) {
-            for (int row = 1; row <= 10; row++) {
-                for (int seatNumber = 1; seatNumber <= 12; seatNumber++) {
-                    Seat seat = new Seat();
-
-                    seat.setHall(hall);
-                    seat.setRowNumber(row);
-                    seat.setSeatNumber(seatNumber);
-
-                    seats.add(seat);
-                }
-            }
-        }
-
-        seatRepository.saveAll(seats);
-    }
-
-    private List<Movie> createMovies() {
-        List<Movie> movies = List.of(
-                createMovie(
+        List<Movie> catalog = List.of(
+                movie(
                         "Интерстеллар",
-                        "Исследователи отправляются через червоточину в поисках нового дома для человечества.",
+                        "Исследователи отправляются через червоточину на поиски нового дома для человечества.",
                         169,
                         AgeRating.R12,
                         "2014-11-06",
-                        "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg"
-                ),
-                createMovie(
+                        "https://st.kp.yandex.net/images/film_iphone/iphone360_258687.jpg"),
+                movie(
                         "Начало",
-                        "Профессиональный вор проникает в подсознание людей через управление снами.",
+                        "Профессиональный вор проникает в сознание людей через управление снами.",
                         148,
                         AgeRating.R16,
                         "2010-07-22",
-                        "https://image.tmdb.org/t/p/w500/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg"
-                ),
-                createMovie(
+                        "https://st.kp.yandex.net/images/film_iphone/iphone360_447301.jpg"),
+                movie(
                         "Матрица",
                         "Хакер узнаёт, что окружающий мир является искусственной реальностью.",
                         136,
                         AgeRating.R16,
                         "1999-03-31",
-                        "https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg"
-                ),
-                createMovie(
+                        "https://st.kp.yandex.net/images/film_iphone/iphone360_301.jpg"),
+                movie(
                         "Дюна",
                         "Наследник благородного дома оказывается втянут в борьбу за пустынную планету.",
                         155,
                         AgeRating.R12,
                         "2021-09-15",
-                        "https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg"
-                ),
-                createMovie(
+                        "https://avatars.mds.yandex.net/get-kinopoisk-image/4303601/9eb762d6-4cdd-464f-9937-aebf30067acc/600x900"),
+                movie(
                         "Джокер",
                         "История человека, который постепенно превращается в криминальную фигуру Готэма.",
                         122,
                         AgeRating.R18,
                         "2019-10-03",
-                        "https://image.tmdb.org/t/p/w500/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg"
-                ),
-                createMovie(
+                        "https://st.kp.yandex.net/images/film_iphone/iphone360_1048334.jpg"),
+                movie(
                         "Пятый элемент",
                         "Таксист из будущего становится участником борьбы за спасение Земли.",
                         126,
                         AgeRating.R12,
                         "1997-05-07",
-                        "https://image.tmdb.org/t/p/w500/tXl4LcgFAjDvD17ThWEabfAVNVY.jpg"
-                ),
-                createMovie(
-                        "Гарри Поттер и философский камень",
-                        "Юный волшебник узнаёт о своём прошлом и поступает в школу магии.",
-                        152,
-                        AgeRating.R6,
-                        "2001-11-04",
-                        "https://image.tmdb.org/t/p/w500/wuMc08IPKEatf9rnMNXvIDxqP4W.jpg"
-                ),
-                createMovie(
-                        "Властелин колец: Братство кольца",
-                        "Хоббит Фродо отправляется в путешествие, чтобы уничтожить могущественное кольцо.",
-                        178,
+                        "https://st.kp.yandex.net/images/film_iphone/iphone360_2656.jpg"),
+                movie(
+                        "Побег из Шоушенка",
+                        "Банкир, осуждённый за преступление, которого не совершал, ищет надежду и свободу за стенами тюрьмы.",
+                        142,
+                        AgeRating.R16,
+                        "1994-09-10",
+                        "https://st.kp.yandex.net/images/film_iphone/iphone360_326.jpg"),
+                movie(
+                        "Крёстный отец",
+                        "Сага о семье Корлеоне и цене власти в послевоенной Америке.",
+                        175,
+                        AgeRating.R16,
+                        "1972-03-14",
+                        "https://st.kp.yandex.net/images/film_iphone/iphone360_333.jpg"),
+                movie(
+                        "Зелёная миля",
+                        "Надзиратель блока смертников встречает необычного заключённого с удивительным даром.",
+                        189,
+                        AgeRating.R16,
+                        "1999-12-06",
+                        "https://st.kp.yandex.net/images/film_iphone/iphone360_435.jpg"),
+                movie(
+                        "Аватар",
+                        "На далёкой Пандоре бывший морпех оказывается между приказом и судьбой планеты.",
+                        162,
                         AgeRating.R12,
-                        "2001-12-19",
-                        "https://image.tmdb.org/t/p/w500/6oom5QYQ2yQTMJIbnvbkBL9cHo6.jpg"
-                ),
-                createMovie(
-                        "Остров проклятых",
-                        "Федеральный маршал расследует исчезновение пациентки на закрытом острове.",
-                        138,
+                        "2009-12-10",
+                        "https://st.kp.yandex.net/images/film_iphone/iphone360_251733.jpg"),
+                movie(
+                        "Одержимость",
+                        "Молодой барабанщик стремится к совершенству под руководством безжалостного дирижёра.",
+                        106,
                         AgeRating.R16,
-                        "2010-02-18",
-                        "https://image.tmdb.org/t/p/w500/nrmXQ0zcZUL8jFLrakWc90IR8z9.jpg"
-                ),
-                createMovie(
-                        "Безумный Макс: Дорога ярости",
-                        "Герои пытаются вырваться из пустыни, преследуемые вооружённой армией.",
-                        120,
-                        AgeRating.R16,
-                        "2015-05-14",
-                        "https://image.tmdb.org/t/p/w500/hA2ple9q4qnwxp3hKVNhroipsir.jpg"
-                ),
-                createMovie(
-                        "Корпорация монстров",
-                        "Монстры получают энергию из детского смеха и сталкиваются с необычным ребёнком.",
-                        92,
-                        AgeRating.R6,
-                        "2001-11-02",
-                        "https://image.tmdb.org/t/p/w500/6gcgtaiWgkFJptFG7l3dkfxJF75.jpg"
-                ),
-                createMovie(
-                        "Назад в будущее",
-                        "Подросток случайно отправляется в прошлое на машине времени.",
-                        116,
-                        AgeRating.R6,
-                        "1985-07-03",
-                        "https://image.tmdb.org/t/p/w500/pTpxQB1N0waaSc3OSn0e9oc8kx9.jpg"
-                )
+                        "2014-01-16",
+                        "https://st.kp.yandex.net/images/film_iphone/iphone360_725190.jpg"),
+                movie(
+                        "Паразиты",
+                        "История двух семей из разных миров, чьи судьбы неожиданно переплетаются.",
+                        131,
+                        AgeRating.R18,
+                        "2019-05-21",
+                        "https://st.kp.yandex.net/images/film_iphone/iphone360_1043758.jpg")
         );
 
-        return movieRepository.saveAll(movies);
+        Set<String> existingTitles = new HashSet<>();
+        movieRepository.findAll().forEach(movie -> existingTitles.add(movie.getTitle()));
+        List<Movie> newMovies = catalog.stream()
+                .filter(movie -> !existingTitles.contains(movie.getTitle()))
+                .toList();
+        if (newMovies.isEmpty()) {
+            return;
+        }
+
+        List<Movie> savedMovies = movieRepository.saveAll(newMovies);
+        createScreenings(halls, savedMovies);
     }
 
-    private Movie createMovie(
-            String title,
-            String description,
-            int durationMinutes,
-            AgeRating ageRating,
-            String releaseDate,
-            String posterUrl
-    ) {
-        Movie movie = new Movie();
-
-        movie.setTitle(title);
-        movie.setDescription(description);
-        movie.setDurationMinutes(durationMinutes);
-        movie.setAgeRating(ageRating);
-        movie.setReleaseDate(LocalDate.parse(releaseDate));
-        movie.setPosterUrl(posterUrl);
-
-        return movie;
+    private List<Hall> createHalls(List<Cinema> cinemas) {
+        List<Hall> halls = new ArrayList<>();
+        for (Cinema cinema : cinemas) {
+            for (int number = 1; number <= 2; number++) {
+                Hall hall = new Hall();
+                hall.setCinema(cinema);
+                hall.setName("Зал " + number);
+                halls.add(hall);
+            }
+        }
+        return hallRepository.saveAll(halls);
     }
 
-    private void createScreenings(
-            List<Hall> halls,
-            List<Movie> movies
-    ) {
+    private void createSeats(List<Hall> halls) {
+        List<Seat> seats = new ArrayList<>();
+        for (Hall hall : halls) {
+            for (int row = 1; row <= 6; row++) {
+                for (int number = 1; number <= 8; number++) {
+                    Seat seat = new Seat();
+                    seat.setHall(hall);
+                    seat.setRowNumber(row);
+                    seat.setSeatNumber(number);
+                    seats.add(seat);
+                }
+            }
+        }
+        seatRepository.saveAll(seats);
+    }
+
+    private void createScreenings(List<Hall> halls, List<Movie> movies) {
+        List<LocalTime> times = List.of(
+                LocalTime.of(10, 30),
+                LocalTime.of(13, 30),
+                LocalTime.of(16, 30),
+                LocalTime.of(19, 30),
+                LocalTime.of(21, 45)
+        );
         List<Screening> screenings = new ArrayList<>();
 
-        LocalDate startDate = LocalDate.now();
-
-        List<LocalTime> startTimes = List.of(
-                LocalTime.of(10, 0),
-                LocalTime.of(12, 45),
-                LocalTime.of(15, 30),
-                LocalTime.of(18, 15),
-                LocalTime.of(21, 0)
-        );
-
-        for (int day = 0; day < 10; day++) {
-            LocalDate date = startDate.plusDays(day);
-
+        for (int day = 0; day < 7; day++) {
             for (int hallIndex = 0; hallIndex < halls.size(); hallIndex++) {
-                Hall hall = halls.get(hallIndex);
-
-                for (int timeIndex = 0; timeIndex < startTimes.size(); timeIndex++) {
-                    Movie movie = movies.get(
-                            (day + hallIndex + timeIndex) % movies.size()
-                    );
-
+                for (int timeIndex = 0; timeIndex < times.size(); timeIndex++) {
                     Screening screening = new Screening();
-
-                    screening.setMovie(movie);
-                    screening.setHall(hall);
-
-                    screening.setStartTime(
-                            LocalDateTime.of(
-                                    date,
-                                    startTimes.get(timeIndex)
-                            )
-                    );
-
-                    screening.setPrice(
-                            calculatePrice(
-                                    hallIndex,
-                                    day,
-                                    timeIndex
-                            )
-                    );
-
+                    screening.setHall(halls.get(hallIndex));
+                    screening.setMovie(movies.get((day + hallIndex + timeIndex) % movies.size()));
+                    screening.setStartTime(LocalDateTime.of(LocalDate.now().plusDays(day), times.get(timeIndex)));
+                    screening.setPrice(BigDecimal.valueOf(8.90 + hallIndex * 2 + (timeIndex > 2 ? 1.5 : 0)));
                     screenings.add(screening);
                 }
             }
         }
-
         screeningRepository.saveAll(screenings);
     }
 
-    private BigDecimal calculatePrice(
-            int hallIndex,
-            int day,
-            int timeIndex
-    ) {
-        BigDecimal price = BigDecimal.valueOf(8.90);
+    private Cinema cinema(String name, String address) {
+        Cinema cinema = new Cinema();
+        cinema.setName(name);
+        cinema.setAddress(address);
+        return cinema;
+    }
 
-        if (hallIndex % 3 == 1) {
-            price = price.add(BigDecimal.valueOf(2.00));
-        }
-
-        if (hallIndex % 3 == 2) {
-            price = price.add(BigDecimal.valueOf(4.00));
-        }
-
-        if (timeIndex >= 3) {
-            price = price.add(BigDecimal.valueOf(1.50));
-        }
-
-        if (day % 7 == 5 || day % 7 == 6) {
-            price = price.add(BigDecimal.valueOf(2.00));
-        }
-
-        return price;
+    private Movie movie(String title, String description, int duration, AgeRating rating, String date, String poster) {
+        Movie movie = new Movie();
+        movie.setTitle(title);
+        movie.setDescription(description);
+        movie.setDurationMinutes(duration);
+        movie.setAgeRating(rating);
+        movie.setReleaseDate(LocalDate.parse(date));
+        movie.setPosterUrl(poster);
+        return movie;
     }
 }
