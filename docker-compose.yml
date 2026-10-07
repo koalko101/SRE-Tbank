@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cinema-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-cinema}
+      POSTGRES_USER: ${DB_USER:-cinema}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-cinema}
+    ports:
+      - "5432:5432"
+    volumes:
+      - cinema_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-cinema} -d ${DB_NAME:-cinema}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cinema-backend
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-cinema}
+      DB_USER: ${DB_USER:-cinema}
+      DB_PASSWORD: ${DB_PASSWORD:-cinema}
+      ITEMS_PER_PAGE: ${ITEMS_PER_PAGE:-4}
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-before-deployment-123456}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      TEST_DATA_ENABLED: ${TEST_DATA_ENABLED:-true}
+      APP_SECURITY_CSRF_ENABLED: ${APP_SECURITY_CSRF_ENABLED:-false}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+    container_name: cinema-frontend
+    restart: unless-stopped
+    environment:
+      ITEMS_PER_PAGE: ${ITEMS_PER_PAGE:-4}
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  cinema_pgdata:

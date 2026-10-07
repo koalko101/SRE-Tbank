@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: cinema
+spec:
+  replicas: 2
+  strategy: { type: RollingUpdate }
+  selector:
+    matchLabels: { app: backend }
+  template:
+    metadata: { labels: { app: backend } }
+    spec:
+      containers:
+        - name: backend
+          image: cinema-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: DB_URL, valueFrom: { configMapKeyRef: { name: cinema-config, key: DB_URL } } }
+            - { name: DB_USER, valueFrom: { configMapKeyRef: { name: cinema-config, key: DB_USER } } }
+            - { name: DB_PASSWORD, valueFrom: { secretKeyRef: { name: cinema-secrets, key: DB_PASSWORD } } }
+            - { name: ITEMS_PER_PAGE, valueFrom: { configMapKeyRef: { name: cinema-config, key: ITEMS_PER_PAGE } } }
+            - { name: JWT_SECRET, valueFrom: { secretKeyRef: { name: cinema-secrets, key: JWT_SECRET } } }
+            - { name: TEST_DATA_ENABLED, valueFrom: { configMapKeyRef: { name: cinema-config, key: TEST_DATA_ENABLED } } }
+            - { name: FRONTEND_URL, valueFrom: { configMapKeyRef: { name: cinema-config, key: FRONTEND_URL } } }
+            - { name: APP_SECURITY_CSRF_ENABLED, valueFrom: { configMapKeyRef: { name: cinema-config, key: APP_SECURITY_CSRF_ENABLED } } }
+          readinessProbe:
+            httpGet: { path: "/api/movies?page=0&size=1", port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: "/api/movies?page=0&size=1", port: 8080 }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 768Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: cinema
+spec:
+  selector: { app: backend }
+  ports: [{ port: 8080, targetPort: 8080 }]
