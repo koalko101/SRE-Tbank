@@ -1,9 +1,37 @@
 test-data:
-  enabled: true
+  enabled: ${TEST_DATA_ENABLED:true}
 
 items-on-pages:
-  count: 4
+  count: ${ITEMS_PER_PAGE:4}
 
 spring:
   application:
     name: ticket-booking
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/cinema}
+    username: ${DB_USER:cinema}
+    password: ${DB_PASSWORD:cinema}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+server:
+  port: ${PORT:8080}
+
+app:
+  security:
+    csrf-enabled: ${APP_SECURITY_CSRF_ENABLED:false}
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:change-me-in-production-please-use-a-long-random-secret-key}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
