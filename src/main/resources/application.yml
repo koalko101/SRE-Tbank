@@ -31,7 +31,10 @@ security:
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 management:
+  server:
+    address: 127.0.0.1
+    port: 8081
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health
