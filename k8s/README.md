@@ -1,12 +1,32 @@
-# Kubernetes
+# Minikube
 
-Манифесты рассчитаны на локальный кластер `minikube` или Docker Desktop Kubernetes.
+Нужны запущенные Docker, Minikube и kubectl. Команды выполняются из корня проекта в zsh:
 
-```bash
+```zsh
+minikube start
+eval "$(minikube -p minikube docker-env)"
 docker build -t cinema-backend:latest .
 docker build -t cinema-frontend:latest ./frontend
+kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/
-kubectl -n cinema get pods
+kubectl -n cinema rollout status deployment/postgres
+kubectl -n cinema rollout status deployment/valkey
+kubectl -n cinema rollout status deployment/backend
+kubectl -n cinema rollout status deployment/frontend
+kubectl -n cinema get pods,services
+minikube service frontend -n cinema
 ```
 
-Frontend будет доступен через NodePort `30080`. Для minikube: `minikube service frontend -n cinema`. Backend масштабируется до двух реплик, PostgreSQL сохраняет данные через PVC, а секреты и конфигурация передаются отдельно через Secret и ConfigMap.
+Для роли администратора зарегистрируйте пользователя, укажите его email в нижнем регистре в `ADMIN_EMAIL` в `k8s/config.yaml`, затем примените конфигурацию и перезапустите backend:
+
+```zsh
+kubectl apply -f k8s/config.yaml
+kubectl -n cinema rollout restart deployment/backend
+```
+
+Масштабирование backend для демонстрации:
+
+```zsh
+kubectl -n cinema scale deployment/backend --replicas=3
+kubectl -n cinema get pods -w
+```

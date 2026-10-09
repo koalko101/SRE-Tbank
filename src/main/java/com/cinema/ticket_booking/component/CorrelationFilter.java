@@ -6,6 +6,8 @@ import java.util.regex.Pattern;
 
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
@@ -16,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Component 
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class CorrelationFilter implements Filter {
 
     private static final String CORRELATION_HEADER = "X-Correlation-Id";

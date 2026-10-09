@@ -14,4 +14,6 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     Optional<Ticket> findByIdAndUser_Email(Long id, String email);
 
     boolean existsByScreening_IdAndSeat_Id(Long screeningId, Long seatId);
+
+    boolean existsByScreening_Id(Long screeningId);
 }

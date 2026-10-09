@@ -13,11 +13,19 @@ spring:
     password: ${DB_PASSWORD:cinema}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 1
+  data:
+    redis:
+      host: ${RATE_LIMIT_STORE_HOST:localhost}
+      port: ${RATE_LIMIT_STORE_PORT:6379}
+      timeout: 500ms
 
 logging:
   level:
@@ -30,6 +38,14 @@ server:
   port: ${PORT:8080}
 
 app:
+  rate-limit:
+    window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:60}
+    general-limit: ${RATE_LIMIT_DEFAULT_LIMIT:90}
+    auth-limit: ${RATE_LIMIT_AUTH_LIMIT:8}
+    purchase-limit: ${RATE_LIMIT_PURCHASE_LIMIT:6}
+    admin-limit: ${RATE_LIMIT_ADMIN_LIMIT:120}
+  admin:
+    email: ${ADMIN_EMAIL:}
   security:
     csrf-enabled: ${APP_SECURITY_CSRF_ENABLED:false}
 
@@ -40,7 +56,7 @@ security:
 
 management:
   server:
-    address: 127.0.0.1
+    address: 0.0.0.0
     port: 8081
   endpoints:
     web:

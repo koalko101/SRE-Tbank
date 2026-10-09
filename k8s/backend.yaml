@@ -15,7 +15,9 @@ spec:
         - name: backend
           image: cinema-backend:latest
           imagePullPolicy: IfNotPresent
-          ports: [{ containerPort: 8080 }]
+          ports:
+            - { name: http, containerPort: 8080 }
+            - { name: management, containerPort: 8081 }
           env:
             - { name: DB_URL, valueFrom: { configMapKeyRef: { name: cinema-config, key: DB_URL } } }
             - { name: DB_USER, valueFrom: { configMapKeyRef: { name: cinema-config, key: DB_USER } } }
@@ -25,14 +27,24 @@ spec:
             - { name: TEST_DATA_ENABLED, valueFrom: { configMapKeyRef: { name: cinema-config, key: TEST_DATA_ENABLED } } }
             - { name: FRONTEND_URL, valueFrom: { configMapKeyRef: { name: cinema-config, key: FRONTEND_URL } } }
             - { name: APP_SECURITY_CSRF_ENABLED, valueFrom: { configMapKeyRef: { name: cinema-config, key: APP_SECURITY_CSRF_ENABLED } } }
+            - { name: ADMIN_EMAIL, valueFrom: { configMapKeyRef: { name: cinema-config, key: ADMIN_EMAIL } } }
+            - { name: RATE_LIMIT_STORE_HOST, valueFrom: { configMapKeyRef: { name: cinema-config, key: RATE_LIMIT_STORE_HOST } } }
+            - { name: RATE_LIMIT_STORE_PORT, valueFrom: { configMapKeyRef: { name: cinema-config, key: RATE_LIMIT_STORE_PORT } } }
+            - { name: RATE_LIMIT_WINDOW_SECONDS, valueFrom: { configMapKeyRef: { name: cinema-config, key: RATE_LIMIT_WINDOW_SECONDS } } }
+            - { name: RATE_LIMIT_DEFAULT_LIMIT, valueFrom: { configMapKeyRef: { name: cinema-config, key: RATE_LIMIT_DEFAULT_LIMIT } } }
+            - { name: RATE_LIMIT_AUTH_LIMIT, valueFrom: { configMapKeyRef: { name: cinema-config, key: RATE_LIMIT_AUTH_LIMIT } } }
+            - { name: RATE_LIMIT_PURCHASE_LIMIT, valueFrom: { configMapKeyRef: { name: cinema-config, key: RATE_LIMIT_PURCHASE_LIMIT } } }
+            - { name: RATE_LIMIT_ADMIN_LIMIT, valueFrom: { configMapKeyRef: { name: cinema-config, key: RATE_LIMIT_ADMIN_LIMIT } } }
           readinessProbe:
-            httpGet: { path: "/api/movies?page=0&size=1", port: 8080 }
-            initialDelaySeconds: 15
+            httpGet: { path: /actuator/health, port: management }
+            initialDelaySeconds: 25
             periodSeconds: 10
+            timeoutSeconds: 3
           livenessProbe:
-            httpGet: { path: "/api/movies?page=0&size=1", port: 8080 }
-            initialDelaySeconds: 30
+            httpGet: { path: /actuator/health, port: management }
+            initialDelaySeconds: 45
             periodSeconds: 20
+            timeoutSeconds: 3
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { cpu: 500m, memory: 768Mi }

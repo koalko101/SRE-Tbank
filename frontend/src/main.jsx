@@ -70,6 +70,12 @@ function localDateValue(value = new Date()) {
   return `${year}-${month}-${day}`
 }
 
+function earliestBirthDate() {
+  const date = new Date()
+  date.setFullYear(date.getFullYear() - 120)
+  return localDateValue(date)
+}
+
 function movieDuration(minutes) {
   const hours = Math.floor(minutes / 60)
   const remainder = minutes % 60
@@ -130,6 +136,8 @@ function App() {
         user ? <AccountPage user={user} /> : <AuthRedirect />
       ) : pathname === '/checkout' ? (
         user ? <CheckoutPage user={user} /> : <AuthRedirect next="/checkout" />
+      ) : pathname === '/admin' ? (
+        user?.role === 'ADMIN' ? <AdminPage /> : <main className="page-section"><ErrorMessage message="Доступ разрешён только администраторам." /></main>
       ) : detailMatch ? (
         <MoviePage movieId={detailMatch[1]} />
       ) : (
@@ -161,6 +169,7 @@ function Header({ user, onSignOut }) {
       <div className="header-account">
         {user ? (
           <>
+            {user.role === 'ADMIN' && <a className="account-link" href="/admin">Управление</a>}
             <a className="account-link" href="/account">Мои билеты</a>
             <button className="quiet-button" onClick={onSignOut}>Выйти</button>
           </>
@@ -169,6 +178,312 @@ function Header({ user, onSignOut }) {
         )}
       </div>
     </header>
+  )
+}
+
+function AdminPage() {
+  const [tab, setTab] = useState('movies')
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [options, setOptions] = useState({ movies: [], halls: [] })
+  const [rows, setRows] = useState([])
+  const [editing, setEditing] = useState(null)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function refreshOptions() {
+    setOptions(await request('/admin/options'))
+  }
+
+  async function refreshRows(section = tab, pageNumber = page) {
+    const data = await request(`/admin/${section}?page=${pageNumber}&size=20`)
+    setRows(data.content || [])
+    setTotalPages(data.totalPages || 0)
+  }
+
+  useEffect(() => {
+    refreshOptions().catch((reason) => setError(reason.message))
+  }, [])
+
+  useEffect(() => {
+    setEditing(null)
+    setError('')
+    refreshRows(tab, page).catch((reason) => setError(reason.message))
+  }, [tab, page])
+
+  async function submit(event) {
+    event.preventDefault()
+    const formElement = event.currentTarget
+    setBusy(true)
+    setError('')
+    setNotice('')
+    const form = new FormData(event.currentTarget)
+    let payload
+    if (tab === 'movies') {
+      payload = Object.fromEntries(form.entries())
+      payload.durationMinutes = Number(payload.durationMinutes)
+    } else {
+      payload = {
+        movieId: Number(form.get('movieId')),
+        hallId: Number(form.get('hallId')),
+        startTime: form.get('startTime'),
+        price: Number(form.get('price')),
+      }
+    }
+    try {
+      await request(`/admin/${tab}${editing ? `/${editing.id}` : ''}`, {
+        method: editing ? 'PUT' : 'POST', body: JSON.stringify(payload),
+      })
+      setEditing(null)
+      setNotice('Изменения сохранены')
+      await refreshRows()
+      await refreshOptions()
+      formElement.reset()
+    } catch (reason) {
+      setError(reason.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function remove(row) {
+    if (!window.confirm('Удалить запись?')) {
+      return
+    }
+    setError('')
+    try {
+      await request(`/admin/${tab}/${row.id}`, { method: 'DELETE' })
+      setNotice('Запись удалена')
+      await refreshRows()
+      await refreshOptions()
+    } catch (reason) {
+      setError(reason.message)
+    }
+  }
+
+  function edit(row) {
+    setEditing(row)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  return (
+    <main>
+      <PageIntro eyebrow="УПРАВЛЕНИЕ КИНОТЕАТРОМ" title="Администрирование" text="Фильмы, расписание и проданные билеты." />
+      <section className="page-section admin-section">
+        <div className="admin-tabs" role="tablist" aria-label="Разделы управления">
+          {[['movies', 'Фильмы'], ['screenings', 'Сеансы'], ['tickets', 'Проданные билеты']].map(([key, label]) => (
+            <button
+              key={key}
+              className={tab === key ? 'active' : ''}
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => {
+                setTab(key)
+                setPage(0)
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {error && <ErrorMessage message={error} />}
+        {notice && <p className="admin-notice" role="status">{notice}</p>}
+        {tab !== 'tickets' && (
+          <form
+            key={editing?.id || 'new'}
+            className="admin-form"
+            onSubmit={submit}
+          >
+            <h2>
+              {editing ? 'Редактировать' : 'Добавить'}{' '}
+              {tab === 'movies' ? 'фильм' : 'сеанс'}
+            </h2>
+            {tab === 'movies' ? (
+              <>
+                <label>
+                  Название
+                  <input
+                    name="title"
+                    required
+                    maxLength="255"
+                    defaultValue={editing?.title || ''}
+                  />
+                </label>
+                <label>
+                  Описание
+                  <textarea
+                    name="description"
+                    required
+                    maxLength="255"
+                    defaultValue={editing?.description || ''}
+                  />
+                </label>
+                <div className="admin-form-grid">
+                  <label>
+                    Длительность, мин
+                    <input
+                      name="durationMinutes"
+                      type="number"
+                      min="1"
+                      required
+                      defaultValue={editing?.durationMinutes || ''}
+                    />
+                  </label>
+                  <label>
+                    Возрастной рейтинг
+                    <select name="ageRating" required defaultValue={editing?.ageRating || 'R0'}>
+                      {['R0', 'R6', 'R12', 'R16', 'R18'].map((rating) => (
+                        <option key={rating}>{rating}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Дата выхода
+                    <input
+                      name="releaseDate"
+                      type="date"
+                      required
+                      defaultValue={editing?.releaseDate || ''}
+                    />
+                  </label>
+                  <label>
+                    Ссылка на постер
+                    <input
+                      name="posterUrl"
+                      type="url"
+                      required
+                      defaultValue={editing?.posterUrl || ''}
+                    />
+                  </label>
+                </div>
+              </>
+            ) : (
+              <div className="admin-form-grid">
+                <label>
+                  Фильм
+                  <select name="movieId" required defaultValue={editing?.movieId || ''}>
+                    <option value="" disabled>Выберите фильм</option>
+                    {options.movies.map((movie) => (
+                      <option value={movie.id} key={movie.id}>{movie.title}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Зал
+                  <select name="hallId" required defaultValue={editing?.hallId || ''}>
+                    <option value="" disabled>Выберите зал</option>
+                    {options.halls.map((hall) => (
+                      <option value={hall.id} key={hall.id}>
+                        {hall.cinemaName}, {hall.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Начало сеанса
+                  <input
+                    name="startTime"
+                    type="datetime-local"
+                    required
+                    defaultValue={editing?.startTime?.slice(0, 16) || ''}
+                  />
+                </label>
+                <label>
+                  Цена, BYN
+                  <input
+                    name="price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    defaultValue={editing?.price || ''}
+                  />
+                </label>
+              </div>
+            )}
+            <div className="admin-form-actions">
+              <button className="button-primary" disabled={busy}>
+                {busy ? 'Сохраняем…' : editing ? 'Сохранить' : 'Добавить'}
+              </button>
+              {editing && (
+                <button
+                  type="button"
+                  className="admin-cancel"
+                  onClick={() => setEditing(null)}
+                >
+                  Отмена
+                </button>
+              )}
+            </div>
+          </form>
+        )}
+        <div className="admin-table-wrap">
+          {tab === 'tickets' ? (
+            <table>
+              <thead>
+                <tr>
+                  <th>Покупатель</th>
+                  <th>Фильм / сеанс</th>
+                  <th>Зал и место</th>
+                  <th>Цена</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.customer}<small>{row.email}</small></td>
+                    <td>
+                      {row.movie}
+                      <small>{formatDate(row.startTime, { dateStyle: 'medium', timeStyle: 'short' })}</small>
+                    </td>
+                    <td>{row.cinema}, {row.hall}<small>Ряд {row.row}, место {row.seat}</small></td>
+                    <td>{Number(row.price).toFixed(2)} BYN</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>{tab === 'movies' ? 'Фильм' : 'Сеанс'}</th>
+                  <th>{tab === 'movies' ? 'Рейтинг / длительность' : 'Кинотеатр / зал'}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id}>
+                    <td>
+                      {tab === 'movies' ? row.title : row.movieTitle}
+                      <small>
+                        {tab === 'screenings' && formatDate(row.startTime, { dateStyle: 'medium', timeStyle: 'short' })}
+                      </small>
+                    </td>
+                    <td>
+                      {tab === 'movies'
+                        ? `${row.ageRating} · ${row.durationMinutes} мин`
+                        : `${row.cinemaName}, ${row.hallName} · ${Number(row.price).toFixed(2)} BYN`}
+                    </td>
+                    <td className="admin-row-actions">
+                      <button onClick={() => edit(row)}>Изменить</button>
+                      <button onClick={() => remove(row)}>Удалить</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {!rows.length && <p className="admin-empty">Записей пока нет.</p>}
+          {totalPages > 1 && <nav className="admin-pagination" aria-label="Страницы списка">
+            <button disabled={page === 0} onClick={() => setPage((current) => current - 1)}>Назад</button>
+            <span>{page + 1} / {totalPages}</span>
+            <button disabled={page + 1 >= totalPages} onClick={() => setPage((current) => current + 1)}>Далее</button>
+          </nav>}
+        </div>
+      </section>
+    </main>
   )
 }
 
@@ -607,11 +922,11 @@ function AuthPage({ mode, onAuthenticated }) {
           <a className={isRegister ? 'selected' : ''} href={`/register?next=${encodeURIComponent(next)}`}>Регистрация</a>
         </div>
         <form className="auth-form" onSubmit={submit}>
-          {isRegister && <label>Имя<input name="name" required autoComplete="name" /></label>}
+          {isRegister && <label>Имя<input name="name" required minLength="2" maxLength="64" autoComplete="name" /></label>}
           <label>Email<input name="email" type="email" required autoComplete="email" /></label>
           {isRegister && <>
-            <label>Телефон<input name="phone" type="tel" required autoComplete="tel" placeholder="+375 29 000 00 00" /></label>
-            <label>Дата рождения<input name="birthDate" type="date" required /></label>
+            <label>Телефон<input name="phone" type="tel" required autoComplete="tel" placeholder="+375291234567" /></label>
+            <label>Дата рождения<input name="birthDate" type="date" required max={localDateValue()} min={earliestBirthDate()} /></label>
           </>}
           <label>
             Пароль
@@ -619,7 +934,8 @@ function AuthPage({ mode, onAuthenticated }) {
               name="password"
               type="password"
               required
-              minLength="6"
+              minLength={isRegister ? 8 : undefined}
+              maxLength={isRegister ? 128 : undefined}
               autoComplete={isRegister ? 'new-password' : 'current-password'}
             />
           </label>

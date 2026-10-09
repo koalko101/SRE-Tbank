@@ -17,6 +17,16 @@ services:
       timeout: 5s
       retries: 10
 
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   backend:
     build:
       context: .
@@ -27,9 +37,16 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-cinema}
       DB_USER: ${DB_USER:-cinema}
       DB_PASSWORD: ${DB_PASSWORD:-cinema}
+      RATE_LIMIT_STORE_HOST: valkey
+      RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
+      RATE_LIMIT_DEFAULT_LIMIT: ${RATE_LIMIT_DEFAULT_LIMIT:-90}
+      RATE_LIMIT_AUTH_LIMIT: ${RATE_LIMIT_AUTH_LIMIT:-8}
+      RATE_LIMIT_PURCHASE_LIMIT: ${RATE_LIMIT_PURCHASE_LIMIT:-6}
+      RATE_LIMIT_ADMIN_LIMIT: ${RATE_LIMIT_ADMIN_LIMIT:-120}
       ITEMS_PER_PAGE: ${ITEMS_PER_PAGE:-4}
       JWT_SECRET: ${JWT_SECRET:-local-development-secret-change-before-deployment-123456}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       TEST_DATA_ENABLED: ${TEST_DATA_ENABLED:-true}
       APP_SECURITY_CSRF_ENABLED: ${APP_SECURITY_CSRF_ENABLED:-false}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
@@ -42,6 +59,8 @@ services:
       retries: 10
     depends_on:
       postgres:
+        condition: service_healthy
+      valkey:
         condition: service_healthy
 
   frontend:

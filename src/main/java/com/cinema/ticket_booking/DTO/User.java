@@ -54,7 +54,7 @@ public class User {
     private LocalDate birthDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 16)
+    @Column(length = 16, nullable = false)
     private Role role = Role.USER;
 
     @CreationTimestamp

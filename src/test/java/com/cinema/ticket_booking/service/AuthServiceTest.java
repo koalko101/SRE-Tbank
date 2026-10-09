@@ -54,6 +54,16 @@ class AuthServiceTest {
     }
 
     @Test
+    void registerRejectsBirthDateOlderThan120Years() {
+        RegisterRequest request = new RegisterRequest(
+                "Alex", "alex@example.com", "+375291112233", LocalDate.of(200, 1, 1), "secret123");
+
+        assertThatThrownBy(() -> authService.register(request))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(userRepository, userSecretRepository, passwordEncoder);
+    }
+
+    @Test
     void registerRejectsNameLongerThan64Characters() {
         RegisterRequest request = new RegisterRequest(
                 "А".repeat(65), "alex@example.com", "+375291112233", LocalDate.of(2000, 1, 1), "secret123");
