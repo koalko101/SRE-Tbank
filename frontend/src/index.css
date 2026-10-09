@@ -969,6 +969,35 @@ select:focus-visible {
   font-size: 13px;
 }
 
+.admin-empty-state {
+  padding: 36px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-empty-state h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.admin-empty-state p {
+  max-width: 560px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.admin-retry {
+  margin-top: 16px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+}
+
 .admin-pagination {
   display: flex;
   align-items: center;

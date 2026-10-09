@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 
@@ -187,19 +187,48 @@ function AdminPage() {
   const [totalPages, setTotalPages] = useState(0)
   const [options, setOptions] = useState({ movies: [], halls: [] })
   const [rows, setRows] = useState([])
+  const [rowsLoading, setRowsLoading] = useState(true)
+  const [rowsError, setRowsError] = useState(false)
   const [editing, setEditing] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const rowsRequestId = useRef(0)
 
   async function refreshOptions() {
-    setOptions(await request('/admin/options'))
+    const data = await request('/admin/options')
+    setOptions({
+      movies: Array.isArray(data.movies) ? data.movies : [],
+      halls: Array.isArray(data.halls) ? data.halls : [],
+    })
   }
 
   async function refreshRows(section = tab, pageNumber = page) {
-    const data = await request(`/admin/${section}?page=${pageNumber}&size=20`)
-    setRows(data.content || [])
-    setTotalPages(data.totalPages || 0)
+    const requestId = ++rowsRequestId.current
+    setRowsLoading(true)
+    setRowsError(false)
+
+    try {
+      const data = await request(`/admin/${section}?page=${pageNumber}&size=20`)
+      if (requestId !== rowsRequestId.current) {
+        return
+      }
+
+      setRows(Array.isArray(data.content) ? data.content : [])
+      setTotalPages(Number.isInteger(data.totalPages) ? data.totalPages : 0)
+      setRowsError(false)
+    } catch (reason) {
+      if (requestId === rowsRequestId.current) {
+        setRows([])
+        setTotalPages(0)
+        setRowsError(true)
+        setError(reason.message)
+      }
+    } finally {
+      if (requestId === rowsRequestId.current) {
+        setRowsLoading(false)
+      }
+    }
   }
 
   useEffect(() => {
@@ -209,7 +238,12 @@ function AdminPage() {
   useEffect(() => {
     setEditing(null)
     setError('')
-    refreshRows(tab, page).catch((reason) => setError(reason.message))
+    setRows([])
+    setTotalPages(0)
+    refreshRows(tab, page)
+    return () => {
+      rowsRequestId.current += 1
+    }
   }, [tab, page])
 
   async function submit(event) {
@@ -418,70 +452,113 @@ function AdminPage() {
             </div>
           </form>
         )}
-        <div className="admin-table-wrap">
-          {tab === 'tickets' ? (
-            <table>
-              <thead>
-                <tr>
-                  <th>Покупатель</th>
-                  <th>Фильм / сеанс</th>
-                  <th>Зал и место</th>
-                  <th>Цена</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>{row.customer}<small>{row.email}</small></td>
-                    <td>
-                      {row.movie}
-                      <small>{formatDate(row.startTime, { dateStyle: 'medium', timeStyle: 'short' })}</small>
-                    </td>
-                    <td>{row.cinema}, {row.hall}<small>Ряд {row.row}, место {row.seat}</small></td>
-                    <td>{Number(row.price).toFixed(2)} BYN</td>
+        {rowsLoading ? (
+          <p className="admin-empty" role="status">Загружаем данные раздела...</p>
+        ) : rowsError ? (
+          <div className="admin-empty-state" role="alert">
+            <h2>Не удалось загрузить список</h2>
+            <p>Проверьте соединение и повторите запрос.</p>
+            <button className="admin-retry" onClick={() => refreshRows()}>
+              Повторить
+            </button>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="admin-empty-state" role="status">
+            <h2>
+              {tab === 'tickets'
+                ? 'Покупок пока нет'
+                : tab === 'screenings'
+                  ? 'Сеансов пока нет'
+                  : 'Фильмов пока нет'}
+            </h2>
+            <p>
+              {tab === 'tickets'
+                ? 'Проданные билеты появятся здесь после первой покупки.'
+                : tab === 'screenings'
+                  ? 'Добавьте первый сеанс с помощью формы выше.'
+                  : 'Добавьте первый фильм с помощью формы выше.'}
+            </p>
+            {tab === 'screenings' && (!options.movies.length || !options.halls.length) && (
+              <p>
+                {!options.movies.length
+                  ? 'Сначала добавьте фильм. Для создания сеанса также необходим кинозал.'
+                  : 'В базе пока нет кинозалов, поэтому создать сеанс нельзя.'}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="admin-table-wrap">
+            {tab === 'tickets' ? (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Покупатель</th>
+                    <th>Фильм / сеанс</th>
+                    <th>Зал и место</th>
+                    <th>Цена</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>{tab === 'movies' ? 'Фильм' : 'Сеанс'}</th>
-                  <th>{tab === 'movies' ? 'Рейтинг / длительность' : 'Кинотеатр / зал'}</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>
-                      {tab === 'movies' ? row.title : row.movieTitle}
-                      <small>
-                        {tab === 'screenings' && formatDate(row.startTime, { dateStyle: 'medium', timeStyle: 'short' })}
-                      </small>
-                    </td>
-                    <td>
-                      {tab === 'movies'
-                        ? `${row.ageRating} · ${row.durationMinutes} мин`
-                        : `${row.cinemaName}, ${row.hallName} · ${Number(row.price).toFixed(2)} BYN`}
-                    </td>
-                    <td className="admin-row-actions">
-                      <button onClick={() => edit(row)}>Изменить</button>
-                      <button onClick={() => remove(row)}>Удалить</button>
-                    </td>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.id}>
+                      <td>
+                        {row.customer}
+                        <small>{row.email}</small>
+                      </td>
+                      <td>
+                        {row.movie}
+                        <small>{formatDate(row.startTime, { dateStyle: 'medium', timeStyle: 'short' })}</small>
+                      </td>
+                      <td>
+                        {row.cinema}, {row.hall}
+                        <small>Ряд {row.row}, место {row.seat}</small>
+                      </td>
+                      <td>{Number(row.price).toFixed(2)} BYN</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>{tab === 'movies' ? 'Фильм' : 'Сеанс'}</th>
+                    <th>{tab === 'movies' ? 'Рейтинг / длительность' : 'Кинотеатр / зал'}</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {!rows.length && <p className="admin-empty">Записей пока нет.</p>}
-          {totalPages > 1 && <nav className="admin-pagination" aria-label="Страницы списка">
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.id}>
+                      <td>
+                        {tab === 'movies' ? row.title : row.movieTitle}
+                        <small>
+                          {tab === 'screenings' && formatDate(row.startTime, { dateStyle: 'medium', timeStyle: 'short' })}
+                        </small>
+                      </td>
+                      <td>
+                        {tab === 'movies'
+                          ? `${row.ageRating} · ${row.durationMinutes} мин`
+                          : `${row.cinemaName}, ${row.hallName} · ${Number(row.price).toFixed(2)} BYN`}
+                      </td>
+                      <td className="admin-row-actions">
+                        <button onClick={() => edit(row)}>Изменить</button>
+                        <button onClick={() => remove(row)}>Удалить</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+        {totalPages > 1 && (
+          <nav className="admin-pagination" aria-label="Страницы списка">
             <button disabled={page === 0} onClick={() => setPage((current) => current - 1)}>Назад</button>
             <span>{page + 1} / {totalPages}</span>
             <button disabled={page + 1 >= totalPages} onClick={() => setPage((current) => current + 1)}>Далее</button>
-          </nav>}
-        </div>
+          </nav>
+        )}
       </section>
     </main>
   )
