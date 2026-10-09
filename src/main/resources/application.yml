@@ -35,6 +35,7 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [requestId=%X{X-Correlation-Id}] %logger{36} - %msg%n"
 
 server:
+  forward-headers-strategy: framework
   port: ${PORT:8080}
 
 app:
