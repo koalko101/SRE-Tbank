@@ -1,6 +1,8 @@
 package com.cinema.ticket_booking.service;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.cinema.ticket_booking.DTO.LoginRequest;
@@ -20,6 +22,7 @@ import java.util.Locale;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository userRepository;
     private final UserSecretRepository userSecretRepository;
@@ -60,6 +63,7 @@ public class AuthService {
 
         userRepository.save(user);
         userSecretRepository.save(userSecret);
+        log.info("Account registration completed");
 
         return user;
     }
@@ -68,11 +72,15 @@ public class AuthService {
     public User login(LoginRequest request) {
         String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
         
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("Неверный email или пароль"));
+        User user = userRepository.findByEmail(email).orElseThrow(() -> {
+            log.warn("Authentication failed: invalid credentials");
+            return new IllegalArgumentException("Неверный email или пароль");
+        });
         
         UserSecret secret = userSecretRepository.findPasswordHashByUserId(user.getId()).orElseThrow(() -> new IllegalArgumentException("Неверный email или пароль"));
        
         if (!passwordEncoder.matches(request.password(), secret.getPasswordHash())) {
+            log.warn("Authentication failed: invalid credentials");
             throw new IllegalArgumentException("Неверный email или пароль");
         }
 
@@ -81,6 +89,7 @@ public class AuthService {
             userRepository.save(user);
         }
 
+        log.info("Authentication succeeded");
         return user;
     }
 }

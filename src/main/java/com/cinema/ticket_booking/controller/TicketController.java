@@ -25,12 +25,16 @@ import java.util.Map;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.time.Period;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/tickets")
 @RequiredArgsConstructor
 @Transactional
 public class TicketController {
+    private static final Logger log = LoggerFactory.getLogger(TicketController.class);
+
     private final TicketRepository tickets;
     private final ScreeningRepository screenings;
     private final SeatRepository seats;
@@ -59,6 +63,7 @@ public class TicketController {
         AgeRating ageRating = screening.getMovie().getAgeRating();
         int ageAtScreening = Period.between(user.getBirthDate(), screening.getStartTime().toLocalDate()).getYears();
         if (ageAtScreening < ageRating.getMinimumAge()) {
+            log.warn("Ticket purchase rejected: age restriction");
             throw new AgeRestrictionException(
                     "Для покупки билета на этот фильм необходимо достичь возраста "
                             + ageRating.getMinimumAge() + " лет");
@@ -86,7 +91,9 @@ public class TicketController {
             newTickets.add(ticket);
         }
 
-        return tickets.saveAll(newTickets).stream().map(this::view).toList();
+        List<Ticket> savedTickets = tickets.saveAll(newTickets);
+        log.info("Ticket purchase completed: ticketCount={}", savedTickets.size());
+        return savedTickets.stream().map(this::view).toList();
     }
 
     @DeleteMapping("/{id}")
