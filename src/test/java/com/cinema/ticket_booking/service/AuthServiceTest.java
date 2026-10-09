@@ -30,15 +30,38 @@ class AuthServiceTest {
 
     @Test
     void registerStoresProfileAndPasswordHash() {
-        when(passwordEncoder.encode("secret")).thenReturn("hashed-secret");
-        RegisterRequest request = new RegisterRequest("Алексей", "alex@example.com", "+375291112233", LocalDate.of(2000, 1, 1), "secret");
+        when(passwordEncoder.encode("secret123")).thenReturn("hashed-secret");
+        RegisterRequest request = new RegisterRequest("Алексей", "alex@example.com", "+375291112233", LocalDate.of(2000, 1, 1), "secret123");
 
         User result = authService.register(request);
 
         assertThat(result.getName()).isEqualTo("Алексей");
         assertThat(result.getEmail()).isEqualTo("alex@example.com");
+        assertThat(result.getRole()).isEqualTo(com.cinema.ticket_booking.DTO.Role.USER);
         verify(userRepository).save(any(User.class));
         verify(userSecretRepository).save(argThat(secret -> "hashed-secret".equals(secret.getPasswordHash())));
+    }
+
+    @Test
+    void registerRejectsFutureBirthDate() {
+        RegisterRequest request = new RegisterRequest(
+                "Алексей", "alex@example.com", "+375291112233", LocalDate.now().plusDays(1), "secret123");
+
+        assertThatThrownBy(() -> authService.register(request))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(userRepository, userSecretRepository, passwordEncoder);
+    }
+
+    @Test
+    void registerRejectsNameLongerThan64Characters() {
+        RegisterRequest request = new RegisterRequest(
+                "А".repeat(65), "alex@example.com", "+375291112233", LocalDate.of(2000, 1, 1), "secret123");
+
+        assertThatThrownBy(() -> authService.register(request))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verifyNoInteractions(userRepository, userSecretRepository, passwordEncoder);
     }
 
     @Test

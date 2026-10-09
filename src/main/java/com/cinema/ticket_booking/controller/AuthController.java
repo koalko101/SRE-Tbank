@@ -39,10 +39,11 @@ public class AuthController {
 
     private Map<String, Object> response(User user) {
         return Map.of(
-                "token", jwtService.generate(user.getEmail()),
+                "token", jwtService.generate(user.getEmail(), user.getRole()),
                 "user", Map.of(
                         "id", user.getId(),
                         "name", user.getName(),
-                        "email", user.getEmail()));
+                        "email", user.getEmail(),
+                        "role", user.getRole().name()));
     }
 }

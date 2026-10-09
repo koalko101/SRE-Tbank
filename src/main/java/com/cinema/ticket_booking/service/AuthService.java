@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 
 import com.cinema.ticket_booking.DTO.LoginRequest;
 import com.cinema.ticket_booking.DTO.RegisterRequest;
+import com.cinema.ticket_booking.DTO.Role;
 import com.cinema.ticket_booking.DTO.User;
 import com.cinema.ticket_booking.DTO.UserSecret;
 import com.cinema.ticket_booking.repository.UserRepository;
@@ -12,6 +13,8 @@ import com.cinema.ticket_booking.repository.UserSecretRepository;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+
+import java.time.LocalDate;
 import java.util.Locale;
 
 @Service
@@ -28,8 +31,11 @@ public class AuthService {
                 || request.email() == null || request.email().isBlank()
                 || request.phone() == null || request.phone().isBlank()
                 || request.birthDate() == null
-                || request.password() == null || request.password().length() < 6) {
-            throw new IllegalArgumentException("Заполните имя, email, телефон, дату рождения и пароль (не менее 6 символов)");
+                || request.birthDate().isAfter(LocalDate.now())
+                || request.birthDate().isBefore(LocalDate.now().minusYears(120))
+                || request.name().trim().length() > 64
+                || request.password() == null || request.password().length() < 8) {
+            throw new IllegalArgumentException("Заполните имя, email, телефон, дату рождения и пароль (не менее 8 символов)");
         }
         String email = request.email().trim().toLowerCase(Locale.ROOT);
         
@@ -44,10 +50,11 @@ public class AuthService {
         User user = new User();
         UserSecret userSecret = new UserSecret();
 
-        user.setName(request.name());
+        user.setName(request.name().trim());
         user.setPhone(request.phone());
         user.setEmail(email);
         user.setBirthDate(request.birthDate());
+        user.setRole(Role.USER);
         userSecret.setUser(user);
         userSecret.setPasswordHash(passwordEncoder.encode(request.password()));
 
@@ -57,6 +64,7 @@ public class AuthService {
         return user;
     }
 
+    @Transactional
     public User login(LoginRequest request) {
         String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
         
@@ -66,6 +74,11 @@ public class AuthService {
        
         if (!passwordEncoder.matches(request.password(), secret.getPasswordHash())) {
             throw new IllegalArgumentException("Неверный email или пароль");
+        }
+
+        if (user.getRole() == null) {
+            user.setRole(Role.USER);
+            userRepository.save(user);
         }
 
         return user;

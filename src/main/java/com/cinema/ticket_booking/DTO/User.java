@@ -7,15 +7,17 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -32,13 +34,13 @@ public class User {
 
     @NotBlank(message = "Имя обязательно")
     @Column(nullable = false)
-    @Max(value = 64, message = "Имя пользователя слишком длинное")
+    @Size(max = 64, message = "Имя пользователя слишком длинное")
     private String name;
 
     @Email
     @NotBlank
     @Column(nullable = false, unique = true)
-    @Max(value = 254, message = "Email адрес слишком длинный")
+    @Size(max = 254, message = "Email адрес слишком длинный")
     private String email;
 
     @NotBlank(message = "Номер телефона обязателен")
@@ -47,8 +49,12 @@ public class User {
     private String phone;
 
     @NotNull
-    @Column(name = "birth_date", nullable = false, columnDefinition = "DATE CHECK (birth_date >= 1900-01-01 AND birth_date <= CURRENT_DATE)")
+    @Column(name = "birth_date", nullable = false)
     private LocalDate birthDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    private Role role = Role.USER;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

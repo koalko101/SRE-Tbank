@@ -1,4 +1,7 @@
 HELP.md
+.env
+Отчёт.md
+.gitignore
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
