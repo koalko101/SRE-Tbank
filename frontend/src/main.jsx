@@ -56,7 +56,13 @@ function usePageData(loader, dependencies = []) {
 }
 
 function formatDate(value, options = {}) {
-  return new Intl.DateTimeFormat('ru-RU', options).format(new Date(value))
+  const date = new Date(value)
+
+  if (!value || Number.isNaN(date.getTime())) {
+    return '—'
+  }
+
+  return new Intl.DateTimeFormat('ru-RU', options).format(date)
 }
 
 function formatTime(value) {
@@ -313,6 +319,12 @@ function AdminPage() {
               role="tab"
               aria-selected={tab === key}
               onClick={() => {
+                setRows([])
+                setRowsLoading(true)
+                setRowsError(false)
+                setTotalPages(0)
+                setEditing(null)
+                setError('')
                 setTab(key)
                 setPage(0)
               }}
