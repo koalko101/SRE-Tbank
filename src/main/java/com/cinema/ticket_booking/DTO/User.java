@@ -18,6 +18,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -32,18 +33,18 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Имя обязательно")
-    @Column(nullable = false)
+    @NotBlank
     @Size(max = 64, message = "Имя пользователя слишком длинное")
+    @Column(nullable = false, length = 64)
     private String name;
 
     @Email
     @NotBlank
-    @Column(nullable = false, unique = true)
     @Size(max = 254, message = "Email адрес слишком длинный")
+    @Column(nullable = false, unique = true, length = 254)
     private String email;
 
-    @NotBlank(message = "Номер телефона обязателен")
+    @NotBlank
     @Pattern(regexp = "^\\+[1-9]\\d{1,14}$", message = "Не верный формат телефона")
     @Column(nullable = false, unique = true)
     private String phone;
