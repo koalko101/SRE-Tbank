@@ -12,6 +12,7 @@ import com.cinema.ticket_booking.repository.ScreeningRepository;
 import com.cinema.ticket_booking.repository.SeatRepository;
 import com.cinema.ticket_booking.repository.TicketRepository;
 import com.cinema.ticket_booking.repository.UserRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -92,6 +93,18 @@ class TicketPurchaseServiceTest {
         assertThatThrownBy(() -> service.purchase(10L, List.of(20L), "alice@example.com"))
                 .isInstanceOf(SeatUnavailableException.class);
         verify(tickets, never()).saveAllAndFlush(anyList());
+    }
+
+    @Test
+    void translatesDatabaseSeatConflictIntoUnavailableSeat() {
+        when(users.findByEmail("alice@example.com")).thenReturn(Optional.of(user));
+        when(screenings.findById(10L)).thenReturn(Optional.of(screening));
+        when(seats.lockAllByIdIn(List.of(20L))).thenReturn(List.of(seat));
+        when(tickets.saveAllAndFlush(anyList()))
+                .thenThrow(new DataIntegrityViolationException("duplicate screening and seat"));
+
+        assertThatThrownBy(() -> service.purchase(10L, List.of(20L), "alice@example.com"))
+                .isInstanceOf(SeatUnavailableException.class);
     }
 
     @Test
