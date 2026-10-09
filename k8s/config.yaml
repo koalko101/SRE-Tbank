@@ -9,9 +9,9 @@ data:
   ITEMS_PER_PAGE: "4"
   DB_URL: jdbc:postgresql://postgres:5432/cinema
   TEST_DATA_ENABLED: "true"
-  FRONTEND_URL: http://localhost:3000
+  FRONTEND_URL: http://localhost:30080
   APP_SECURITY_CSRF_ENABLED: "false"
-  ADMIN_EMAIL: ""
+  ADMIN_EMAIL: "some-email@mail.com"
   RATE_LIMIT_STORE_HOST: valkey
   RATE_LIMIT_STORE_PORT: "6379"
   RATE_LIMIT_WINDOW_SECONDS: "60"

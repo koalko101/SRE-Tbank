@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password4j.Argon2Password4jPasswordEn
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
 import org.springframework.beans.factory.annotation.Value;
 import com.cinema.ticket_booking.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    @Value("${app.security.csrf-enabled:true}")
+    @Value("${app.security.csrf-enabled:false}")
     private boolean csrfEnabled;
     
     @Bean

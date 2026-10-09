@@ -9,8 +9,6 @@ docker build -t cinema-backend:latest .
 docker build -t cinema-frontend:latest ./frontend
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/
-kubectl -n cinema rollout status deployment/postgres
-kubectl -n cinema rollout status deployment/valkey
 kubectl -n cinema rollout status deployment/backend
 kubectl -n cinema rollout status deployment/frontend
 kubectl -n cinema get pods,services
