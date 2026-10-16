@@ -4,6 +4,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -16,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+@Slf4j
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class RateLimitFilter extends OncePerRequestFilter {
@@ -78,6 +81,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
             long currentCount = result / 100000;
             long secondsRemaining = result % 100000;
             if (currentCount > limit) {
+
+                log.atWarn()
+                   .addKeyValue("event", "user.block.temp")
+                   .addKeyValue("reason", "too_match_requsts")
+                   .log("Temporary block user");
+
                 response.setStatus(429);
                 response.setHeader("Retry-After", Long.toString(Math.max(secondsRemaining, 1)));
                 response.setContentType("application/json");
@@ -93,6 +102,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private void serviceUnavailable(HttpServletResponse response) throws IOException {
+        log.atError()
+           .addKeyValue("event", "user.block.temp")
+           .addKeyValue("reason", "denial_of_service")
+           .log("Service is down");
         response.setStatus(503);
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");

@@ -12,6 +12,8 @@ import com.cinema.ticket_booking.repository.TicketRepository;
 import com.cinema.ticket_booking.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,7 @@ import java.time.Period;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TicketPurchaseService {
@@ -36,9 +39,21 @@ public class TicketPurchaseService {
             throw new IllegalArgumentException("Одно место выбрано несколько раз");
         }
         User user = users.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Аккаунт не найден"));
+                .orElseThrow(() -> {
+                    log.atWarn()
+                       .addKeyValue("event", "user.order.failure")
+                       .addKeyValue("reason", "user_not_found")
+                       .log("Account does not exists");
+                    return new IllegalArgumentException("Аккаунт не найден");
+                });
         Screening screening = screenings.findById(screeningId)
-                .orElseThrow(() -> new IllegalArgumentException("Сеанс не найден"));
+                .orElseThrow(() -> {
+                    log.atWarn()
+                       .addKeyValue("event", "user.order.failure")
+                       .addKeyValue("reason", "screaning_not_exists")
+                       .log("Screaning does not exists");
+                    return new IllegalArgumentException("Сеанс не найден");
+                });
         AgeRating rating = screening.getMovie().getAgeRating();
         int age = Period.between(user.getBirthDate(), screening.getStartTime().toLocalDate()).getYears();
         if (age < rating.getMinimumAge()) {
@@ -49,14 +64,26 @@ public class TicketPurchaseService {
         List<Long> orderedIds = seatIds.stream().sorted().toList();
         List<Seat> selectedSeats = seats.lockAllByIdIn(orderedIds);
         if (selectedSeats.size() != orderedIds.size()) {
+            log.atWarn()
+               .addKeyValue("event", "user.order.failure")
+               .addKeyValue("reason", "seats_not_exists")
+               .log("Seats does not exists");
             throw new IllegalArgumentException("Одно или несколько мест не найдены");
         }
         List<Ticket> created = new ArrayList<>();
         for (Seat seat : selectedSeats) {
             if (!seat.getHall().getId().equals(screening.getHall().getId())) {
+                log.atWarn()
+                   .addKeyValue("event", "user.order.failure")
+                   .addKeyValue("reason", "seat_not_part_of_hall")
+                   .log("Seat is not part of the hall");
                 throw new IllegalArgumentException("Выбранное место не относится к этому залу");
             }
             if (tickets.existsByScreening_IdAndSeat_Id(screeningId, seat.getId())) {
+                log.atWarn()
+                   .addKeyValue("event", "user.order.failure")
+                   .addKeyValue("reason", "seat_is_taken")
+                   .log("Seats is taken");
                 throw new SeatUnavailableException();
             }
             Ticket ticket = new Ticket();
@@ -67,8 +94,16 @@ public class TicketPurchaseService {
             created.add(ticket);
         }
         try {
+            log.atInfo()
+               .addKeyValue("event", "user.order.success")
+               .addKeyValue("reason", "success")
+               .log("Tickets is completly ordered");
             return tickets.saveAllAndFlush(created);
         } catch (DataIntegrityViolationException exception) {
+            log.atError()
+               .addKeyValue("event", "user.order.failure")
+               .addKeyValue("reason", "repo_is_unavailable")
+               .log("Repository is unavailable");
             throw new SeatUnavailableException(exception);
         }
     }

@@ -5,7 +5,9 @@ import com.cinema.ticket_booking.DTO.RegisterRequest;
 import com.cinema.ticket_booking.DTO.User;
 import com.cinema.ticket_booking.security.JwtService;
 import com.cinema.ticket_booking.service.AuthService;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;

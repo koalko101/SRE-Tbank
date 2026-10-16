@@ -5,8 +5,8 @@ import com.cinema.ticket_booking.repository.TicketRepository;
 import com.cinema.ticket_booking.service.TicketPurchaseService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,12 +19,12 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/tickets")
 @RequiredArgsConstructor
 @Transactional
 public class TicketController {
-    private static final Logger log = LoggerFactory.getLogger(TicketController.class);
     private final TicketRepository tickets;
     private final TicketPurchaseService purchaseService;
 
@@ -43,6 +43,9 @@ public class TicketController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id, Principal principal) {
+
+        log.info("Deleting purshace from userId={}", id);
+
         return tickets.findByIdAndUser_Email(id, principal.getName())
                 .map(ticket -> {
                     tickets.delete(ticket);

@@ -1,8 +1,8 @@
 package com.cinema.ticket_booking.service;
 
+import java.time.LocalDate;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.cinema.ticket_booking.DTO.LoginRequest;
@@ -15,14 +15,12 @@ import com.cinema.ticket_booking.repository.UserSecretRepository;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-import java.time.LocalDate;
-import java.util.Locale;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository userRepository;
     private final UserSecretRepository userSecretRepository;
@@ -38,15 +36,32 @@ public class AuthService {
                 || request.birthDate().isBefore(LocalDate.now().minusYears(120))
                 || request.name().trim().length() > 64
                 || request.password() == null || request.password().length() < 8) {
+
+            
+            log.atWarn()
+               .addKeyValue("event", "auth.register.failure")
+               .addKeyValue("reason", "invalid_credentials")
+               .log("Invalid credentials");
+
             throw new IllegalArgumentException("Заполните имя, email, телефон, дату рождения и пароль (не менее 8 символов)");
         }
-        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        String email = request.email().trim().toLowerCase();
         
         if (userRepository.findByEmail(email).isPresent()) {
+            log.atWarn()
+               .addKeyValue("event", "auth.register.failure")
+               .addKeyValue("reason", "user_exists")
+               .addKeyValue("type", "email")
+               .log("User with the same email was already exists");
             throw new IllegalArgumentException("Этот email уже зарегистрирован");
         }
         
         if (userRepository.existsByPhone(request.phone())) {
+            log.atWarn()
+               .addKeyValue("event", "auth.register.failure")
+               .addKeyValue("reason", "user_exists")
+               .addKeyValue("type", "phone")
+               .log("User with the same phone was already exists");
             throw new IllegalArgumentException("Этот номер телефона уже зарегистрирован");
         }
 
@@ -63,24 +78,33 @@ public class AuthService {
 
         userRepository.save(user);
         userSecretRepository.save(userSecret);
-        log.info("Account registration completed");
+        log.atInfo()
+           .addKeyValue("event", "auth.registration.success")
+           .addKeyValue("reason", "success")
+           .log("Account registration completed");
 
         return user;
     }
 
     @Transactional
     public User login(LoginRequest request) {
-        String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
+        String email = request.email() == null ? "" : request.email().trim().toLowerCase();
         
         User user = userRepository.findByEmail(email).orElseThrow(() -> {
-            log.warn("Authentication failed: invalid credentials");
+            log.atWarn()
+               .addKeyValue("event", "auth.login.failure")
+               .addKeyValue("reason", "invalid_credentials")
+               .log("Invalid credentials");
             return new IllegalArgumentException("Неверный email или пароль");
         });
         
         UserSecret secret = userSecretRepository.findPasswordHashByUserId(user.getId()).orElseThrow(() -> new IllegalArgumentException("Неверный email или пароль"));
        
         if (!passwordEncoder.matches(request.password(), secret.getPasswordHash())) {
-            log.warn("Authentication failed: invalid credentials");
+            log.atWarn()
+               .addKeyValue("event", "auth.login.failure")
+               .addKeyValue("reason", "incorrect_password")
+               .log("Incorrect password");
             throw new IllegalArgumentException("Неверный email или пароль");
         }
 
@@ -89,7 +113,10 @@ public class AuthService {
             userRepository.save(user);
         }
 
-        log.info("Authentication succeeded");
+        log.atInfo()
+           .addKeyValue("event", "auth.login.success")
+           .addKeyValue("reason", "success")
+           .log("Authentication succeeded");
         return user;
     }
 }
