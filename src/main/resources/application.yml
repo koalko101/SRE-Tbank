@@ -31,8 +31,14 @@ logging:
   level:
     root: INFO
     com.cinema.ticket_booking: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [requestId=%X{X-Correlation-Id}] %logger{36} - %msg%n"
+
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        name: cinema-backend
+        environment: minikube
 
 server:
   forward-headers-strategy: framework
