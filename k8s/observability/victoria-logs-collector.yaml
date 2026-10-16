@@ -69,6 +69,7 @@ spec:
             - --remoteWrite.maxDiskUsagePerURL=1GB
             - --tmpDataPath=/var/lib/vlagent
             - --kubernetesCollector.excludeFilter=kubernetes.pod_namespace:in(logging,kube-system)
+            - --kubernetesCollector.timeField=@timestamp,time,timestamp,ts
           env:
             - name: HOSTNAME
               valueFrom:
