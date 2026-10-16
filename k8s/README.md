@@ -12,13 +12,12 @@ kubectl apply -n cinema -f k8s/
 kubectl -n cinema rollout status deployment/backend
 kubectl -n cinema rollout status deployment/frontend
 kubectl -n cinema get pods,services
-kubectl apply -f observability/victoria-logs.yaml
-kubectl apply -f observability/victoria-logs-collector.yaml
+kubectl apply -f observability/
 kubectl -n logging get pods,services,pvc
 minikube service frontend -n cinema
 ```
 
-Для открытия ```vmui``` нужно сделать port-forward, либо запустить скрипт:
+Для открытия ```vmui``` нужно сделать port-forward:
 ```zsh
 ./observability/vmui.sh
 ```
