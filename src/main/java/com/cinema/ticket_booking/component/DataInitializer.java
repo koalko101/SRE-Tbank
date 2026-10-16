@@ -12,6 +12,8 @@ import com.cinema.ticket_booking.repository.MovieRepository;
 import com.cinema.ticket_booking.repository.ScreeningRepository;
 import com.cinema.ticket_booking.repository.SeatRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -25,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
@@ -40,6 +43,10 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         if (!enabled) {
+            log.atInfo()
+               .addKeyValue("event", "data.test.initialize")
+               .addKeyValue("reason", "test_data_enabled")
+               .log("Initialized by test data");
             return;
         }
 

@@ -10,6 +10,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.hibernate.validator.constraints.URL;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -27,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/admin/movies")
 @RequiredArgsConstructor
@@ -38,6 +41,12 @@ public class AdminMovieController {
     public Map<String, Object> all(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+
+        log.atInfo()
+           .addKeyValue("event", "admin.panel.view")
+           .addKeyValue("reason", "view_movies")
+           .log("List movies at page={} with pageSize={}", page, size);
+
         var result = movies.findAll(PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50),
                 Sort.by(Sort.Direction.DESC, "releaseDate")));
         return Map.of(
@@ -50,6 +59,10 @@ public class AdminMovieController {
     @PostMapping
     public Movie create(
             @Valid @RequestBody MovieInput input) {
+        log.atInfo()
+           .addKeyValue("event", "admin.panel.create")
+           .addKeyValue("reason", "add_new_movie")
+           .log("Adding new movie is complete");
         return movies.save(input.toMovie(new Movie()));
     }
 
@@ -57,17 +70,35 @@ public class AdminMovieController {
     public ResponseEntity<Movie> update(
             @PathVariable Long id,
             @Valid @RequestBody MovieInput input) {
+
         return movies.findById(id).map(movie -> ResponseEntity.ok(movies.save(input.toMovie(movie))))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseGet(() -> {
+                    log.atWarn()
+                       .addKeyValue("event", "admin.panel.change")
+                       .addKeyValue("reason", "change_movie_info")
+                       .addKeyValue("movieId", id)
+                       .log("Updating movie info is complete");
+                    return ResponseEntity.notFound().build();
+                });
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(
             @PathVariable Long id) {
         if (!movies.existsById(id)) {
+            log.atWarn()
+               .addKeyValue("event", "admin.panel.delete.failure")
+               .addKeyValue("reason", "movie_not_exists")
+               .addKeyValue("movieId", id)
+               .log("Movie does not found");
             return ResponseEntity.notFound().build();
         }
         if (screenings.existsByMovie_Id(id)) {
+            log.atWarn()
+               .addKeyValue("event", "admin.panel.delete.failure")
+               .addKeyValue("reason", "movie_deletion_deprecated")
+               .addKeyValue("movieId", id)
+               .log("Unable to delete movie with screanings");
             return ResponseEntity.unprocessableContent()
                     .body(Map.of("error", "Нельзя удалить фильм с сеансами"));
         }

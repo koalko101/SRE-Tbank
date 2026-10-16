@@ -3,6 +3,8 @@ package com.cinema.ticket_booking.controller;
 import com.cinema.ticket_booking.repository.TicketRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/admin/tickets")
 @RequiredArgsConstructor
@@ -23,6 +26,12 @@ public class AdminTicketController {
     public Map<String, Object> all(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+
+        log.atInfo()
+           .addKeyValue("event", "admin.panel.view")
+           .addKeyValue("reason", "view_tickets")
+           .log("List tickets at page={} with pageSize={}", page, size);
+
         var result = tickets.findAll(PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50),
                 Sort.by(Sort.Direction.DESC, "createdAt")));
         var content = result.getContent().stream()

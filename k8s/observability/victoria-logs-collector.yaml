@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: victoria-logs-collector
+  namespace: logging
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: victoria-logs-collector
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: victoria-logs-collector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: victoria-logs-collector
+subjects:
+  - kind: ServiceAccount
+    name: victoria-logs-collector
+    namespace: logging
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: victoria-logs-collector
+  namespace: logging
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: victoria-logs-collector
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: victoria-logs-collector
+    spec:
+      serviceAccountName: victoria-logs-collector
+      automountServiceAccountToken: true
+      terminationGracePeriodSeconds: 30
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: vlagent
+          image: victoriametrics/vlagent:v1.53.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --kubernetesCollector
+            - --loggerFormat=json
+            - --remoteWrite.url=http://victoria-logs.logging.svc.cluster.local:9428/insert/native
+            - --remoteWrite.maxDiskUsagePerURL=1GB
+            - --tmpDataPath=/var/lib/vlagent
+            - --kubernetesCollector.excludeFilter=kubernetes.pod_namespace:in(logging,kube-system)
+            - --kubernetesCollector.timeField=@timestamp,time,timestamp,ts
+          env:
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - name: varlib
+              mountPath: /var/lib
+              readOnly: true
+            - name: vlagent-data
+              mountPath: /var/lib/vlagent
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+            type: Directory
+        - name: varlib
+          hostPath:
+            path: /var/lib
+            type: Directory
+        - name: vlagent-data
+          hostPath:
+            path: /var/lib/vlagent
+            type: DirectoryOrCreate
