@@ -1,6 +1,7 @@
 package com.cinema.ticket_booking.controller;
 
 import com.cinema.ticket_booking.DTO.Ticket;
+import com.cinema.ticket_booking.component.BusinessMetrics;
 import com.cinema.ticket_booking.repository.TicketRepository;
 import com.cinema.ticket_booking.service.TicketPurchaseService;
 import jakarta.transaction.Transactional;
@@ -25,8 +26,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Transactional
 public class TicketController {
+
     private final TicketRepository tickets;
     private final TicketPurchaseService purchaseService;
+    private final BusinessMetrics metrics;
 
     @GetMapping
     public List<Map<String, Object>> all(Principal principal) {
@@ -36,7 +39,9 @@ public class TicketController {
 
     @PostMapping
     public List<Map<String, Object>> create(@RequestBody TicketRequest request, Principal principal) {
-        List<Ticket> saved = purchaseService.purchase(request.screeningId(), request.seatIds(), principal.getName());
+        List<Ticket> saved = metrics.durationBooking(
+                () -> purchaseService.purchase(request.screeningId(), request.seatIds(), principal.getName())
+            );
         log.info("Ticket purchase completed: ticketCount={}", saved.size());
         return saved.stream().map(this::view).toList();
     }

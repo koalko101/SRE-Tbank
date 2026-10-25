@@ -3,6 +3,7 @@ package com.cinema.ticket_booking.controller;
 import com.cinema.ticket_booking.DTO.LoginRequest;
 import com.cinema.ticket_booking.DTO.RegisterRequest;
 import com.cinema.ticket_booking.DTO.User;
+import com.cinema.ticket_booking.component.BusinessMetrics;
 import com.cinema.ticket_booking.security.JwtService;
 import com.cinema.ticket_booking.service.AuthService;
 
@@ -22,6 +23,7 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
+
     private final AuthService authService;
     private final JwtService jwtService;
 

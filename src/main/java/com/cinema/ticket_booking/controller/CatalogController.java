@@ -3,6 +3,7 @@ package com.cinema.ticket_booking.controller;
 import com.cinema.ticket_booking.DTO.Cinema;
 import com.cinema.ticket_booking.DTO.Movie;
 import com.cinema.ticket_booking.DTO.Screening;
+import com.cinema.ticket_booking.component.BusinessMetrics;
 import com.cinema.ticket_booking.repository.CinemaRepository;
 import com.cinema.ticket_booking.repository.HallRepository;
 import com.cinema.ticket_booking.repository.MovieRepository;
@@ -37,6 +38,7 @@ public class CatalogController {
     private final ScreeningRepository screenings;
     private final SeatRepository seats;
     private final TicketRepository tickets;
+    private final BusinessMetrics metrics;
 
     @GetMapping("/movies")
     public PageResponse<Movie> movies(
@@ -47,9 +49,16 @@ public class CatalogController {
             @RequestParam(required = false) Long cinemaId,
             @RequestParam(required = false) LocalDate date
     ) {
+        
         LocalDateTime from = date == null ? LocalDateTime.of(1970, 1, 1, 0, 0) : date.atStartOfDay();
         LocalDateTime to = date == null ? LocalDateTime.of(3000, 1, 1, 0, 0) : date.plusDays(1).atStartOfDay();
+        
         int pageSize = size == null ? itemsPerPage : size;
+        
+        if (!query.isBlank()) {
+            metrics.searchMovie();
+        }
+
         return PageResponse.from(movies.findCatalogPage(query.trim(), available, cinemaId == null ? 0L : cinemaId, from, to,
                 PageRequest.of(Math.max(page, 0), Math.min(Math.max(pageSize, 1), 24))));
     }

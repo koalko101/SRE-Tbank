@@ -10,6 +10,7 @@ import com.cinema.ticket_booking.DTO.RegisterRequest;
 import com.cinema.ticket_booking.DTO.Role;
 import com.cinema.ticket_booking.DTO.User;
 import com.cinema.ticket_booking.DTO.UserSecret;
+import com.cinema.ticket_booking.component.BusinessMetrics;
 import com.cinema.ticket_booking.repository.UserRepository;
 import com.cinema.ticket_booking.repository.UserSecretRepository;
 
@@ -25,6 +26,8 @@ public class AuthService {
     private final UserRepository userRepository;
     private final UserSecretRepository userSecretRepository;
     private final PasswordEncoder passwordEncoder;
+    private final BusinessMetrics metrics;
+
 
     @Transactional
     public User register(RegisterRequest request) {
@@ -42,6 +45,8 @@ public class AuthService {
                .addKeyValue("event", "auth.register.failure")
                .addKeyValue("reason", "invalid_credentials")
                .log("Invalid credentials");
+            
+            metrics.failureRegistered();
 
             throw new IllegalArgumentException("Заполните имя, email, телефон, дату рождения и пароль (не менее 8 символов)");
         }
@@ -53,6 +58,9 @@ public class AuthService {
                .addKeyValue("reason", "user_exists")
                .addKeyValue("type", "email")
                .log("User with the same email was already exists");
+            
+            metrics.failureRegistered();
+
             throw new IllegalArgumentException("Этот email уже зарегистрирован");
         }
         
@@ -62,6 +70,9 @@ public class AuthService {
                .addKeyValue("reason", "user_exists")
                .addKeyValue("type", "phone")
                .log("User with the same phone was already exists");
+            
+            metrics.failureRegistered();
+
             throw new IllegalArgumentException("Этот номер телефона уже зарегистрирован");
         }
 
@@ -83,6 +94,8 @@ public class AuthService {
            .addKeyValue("reason", "success")
            .log("Account registration completed");
 
+        metrics.successRegistered();
+
         return user;
     }
 
@@ -95,6 +108,8 @@ public class AuthService {
                .addKeyValue("event", "auth.login.failure")
                .addKeyValue("reason", "invalid_credentials")
                .log("Invalid credentials");
+            metrics.failureAuth();
+
             return new IllegalArgumentException("Неверный email или пароль");
         });
         
@@ -105,6 +120,8 @@ public class AuthService {
                .addKeyValue("event", "auth.login.failure")
                .addKeyValue("reason", "incorrect_password")
                .log("Incorrect password");
+            metrics.failureAuth();
+
             throw new IllegalArgumentException("Неверный email или пароль");
         }
 
@@ -117,6 +134,8 @@ public class AuthService {
            .addKeyValue("event", "auth.login.success")
            .addKeyValue("reason", "success")
            .log("Authentication succeeded");
+        metrics.successAuth();
+
         return user;
     }
 }
