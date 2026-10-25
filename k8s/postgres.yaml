@@ -65,14 +65,14 @@ spec:
 
         - name: postgres-exporter
           image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
-          args:
-            - "--datasource.uri=localhost:5432/$(DB_NAME)?sslmode=disable"
           env:
             - name: DB_NAME
               valueFrom:
                 configMapKeyRef:
                   name: cinema-config
                   key: DB_NAME
+            - name: DATA_SOURCE_URI
+              value: "localhost:5432/$(DB_NAME)?sslmode=disable"
             - name: DATA_SOURCE_USER
               valueFrom:
                 configMapKeyRef:

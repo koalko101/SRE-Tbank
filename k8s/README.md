@@ -12,7 +12,7 @@ kubectl apply -n cinema -f k8s/
 kubectl -n cinema rollout status deployment/backend
 kubectl -n cinema rollout status deployment/frontend
 kubectl -n cinema get pods,services
-kubectl apply -f observability/
+kubectl apply -f k8s/observability/
 kubectl -n logging get pods,services,pvc
 minikube service frontend -n cinema
 ```
