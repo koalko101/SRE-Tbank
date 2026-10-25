@@ -17,19 +17,41 @@ metadata:
 spec:
   replicas: 1
   selector:
-    matchLabels: { app: postgres }
+    matchLabels:
+      app: postgres
   template:
-    metadata: { labels: { app: postgres } }
+    metadata:
+      labels:
+        app: postgres
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9187"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
         - name: postgres
           image: postgres:16-alpine
-          ports: [{ containerPort: 5432 }]
+          ports:
+            - containerPort: 5432
           env:
-            - { name: POSTGRES_DB, valueFrom: { configMapKeyRef: { name: cinema-config, key: DB_NAME } } }
-            - { name: POSTGRES_USER, valueFrom: { configMapKeyRef: { name: cinema-config, key: DB_USER } } }
-            - { name: POSTGRES_PASSWORD, valueFrom: { secretKeyRef: { name: cinema-secrets, key: DB_PASSWORD } } }
-          volumeMounts: [{ name: postgres-data, mountPath: /var/lib/postgresql/data }]
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: cinema-config
+                  key: DB_NAME
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: cinema-config
+                  key: DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cinema-secrets
+                  key: DB_PASSWORD
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
           readinessProbe:
             exec: { command: ["sh", "-c", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"] }
             initialDelaySeconds: 5
@@ -40,7 +62,36 @@ spec:
             initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 3
-      volumes: [{ name: postgres-data, persistentVolumeClaim: { claimName: postgres-data } }]
+
+        - name: postgres-exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+          args:
+            - "--datasource.uri=localhost:5432/$(DB_NAME)?sslmode=disable"
+          env:
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: cinema-config
+                  key: DB_NAME
+            - name: DATA_SOURCE_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: cinema-config
+                  key: DB_USER
+            - name: DATA_SOURCE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: cinema-secrets
+                  key: DB_PASSWORD
+          ports:
+            - name: metrics
+              containerPort: 9187
+              protocol: TCP
+
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-data
 ---
 apiVersion: v1
 kind: Service
@@ -48,5 +99,8 @@ metadata:
   name: postgres
   namespace: cinema
 spec:
-  selector: { app: postgres }
-  ports: [{ port: 5432, targetPort: 5432 }]
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
