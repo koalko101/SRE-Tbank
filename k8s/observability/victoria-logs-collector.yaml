@@ -70,6 +70,7 @@ spec:
             - --tmpDataPath=/var/lib/vlagent
             - --kubernetesCollector.excludeFilter=kubernetes.pod_namespace:in(logging,kube-system)
             - --kubernetesCollector.timeField=@timestamp,time,timestamp,ts
+            - --kubernetesCollector.streamFields=kubernetes.container_name,kubernetes.pod_name,kubernetes.pod_namespace,log_type
           env:
             - name: HOSTNAME
               valueFrom:
