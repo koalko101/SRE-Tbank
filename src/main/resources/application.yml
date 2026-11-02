@@ -72,9 +72,9 @@ management:
   metrics:
     distribution:
       percentiles-histogram:
-        cinema.booking.duration: true
+        "[cinema.booking.duration]": true
       slo:
-        cinema.booking.duration: 500ms
+        "[cinema.booking.duration]": 100ms, 300ms, 500ms, 1s
   health:
     livenessstate:
       enabled: true
