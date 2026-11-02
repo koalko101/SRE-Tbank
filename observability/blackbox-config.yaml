@@ -1,9 +1,0 @@
-modules:
-  cinema_api:
-    prober: http
-    timeout: 5s
-    http:
-      method: GET
-      valid_status_codes:
-        - 200
-      preferred_ip_protocol: ip4

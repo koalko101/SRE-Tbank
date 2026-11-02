@@ -5,14 +5,6 @@
 ```zsh
 minikube start
 eval "$(minikube -p minikube docker-env)"
-helm repo add vm https://victoriametrics.github.io/helm-charts/
-helm repo update
-helm upgrade --install vm-single vm/victoria-metrics-single \
-  --version 0.49.0 \
-  --namespace monitoring \
-  --create-namespace \
-  --values observability/monitoring/victoria-metrics.yaml
-
 docker build -t cinema-backend:latest .
 docker build -t cinema-frontend:latest ./frontend
 kubectl apply -f k8s/namespace.yaml
@@ -20,6 +12,10 @@ kubectl apply -n cinema -f k8s/
 kubectl -n cinema rollout status deployment/backend
 kubectl -n cinema rollout status deployment/frontend
 kubectl -n cinema get pods,services
+helm repo add vm https://victoriametrics.github.io/helm-charts/
+helm repo update
+helm upgrade --install vm-single vm/victoria-metrics-single --version 0.49.0 --namespace monitoring --create-namespace --values observability/monitoring/victoria-metrics.yaml
+helm upgrade --install blackbox-exporter prometheus-community/prometheus-blackbox-exporter -n monitoring --create-namespace -f observability/blackbox-exporter.yaml
 kubectl -n monitoring rollout status statefulset/vm-single-victoria-metrics-single-server
 kubectl -n monitoring get pods,services
 kubectl apply -f k8s/observability/
