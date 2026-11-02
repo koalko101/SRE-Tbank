@@ -11,7 +11,7 @@ helm upgrade --install vm-single vm/victoria-metrics-single \
   --version 0.49.0 \
   --namespace monitoring \
   --create-namespace \
-  --values k8s/monitoring/victoria-metrics.yaml
+  --values observability/monitoring/victoria-metrics.yaml
 
 docker build -t cinema-backend:latest .
 docker build -t cinema-frontend:latest ./frontend
