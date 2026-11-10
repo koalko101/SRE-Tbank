@@ -1,0 +1,150 @@
+version: prometheus/v1
+service: cinema
+labels:
+  owner: cinema
+  repo: cinema
+  tier: 2
+slos:
+  - name: catalog-availability
+    objective: 99
+    description: Successful movie catalog requests.
+    sli:
+      events:
+        error_query: sum(rate(cinema_sli_requests_total{operation="catalog",result="bad"}[{{.window}}]))
+        total_query: sum(rate(cinema_sli_requests_total{operation="catalog"}[{{.window}}]))
+    alerting:
+      name: CinemaCatalogAvailability
+      page_alert:
+        disable: true
+      ticket_alert:
+        disable: true
+  - name: movie-search-availability
+    objective: 99
+    description: Successful movie search requests.
+    sli:
+      events:
+        error_query: sum(rate(cinema_sli_requests_total{operation="movie_search",result="bad"}[{{.window}}]))
+        total_query: sum(rate(cinema_sli_requests_total{operation="movie_search"}[{{.window}}]))
+    alerting:
+      name: CinemaMovieSearchAvailability
+      page_alert:
+        disable: true
+      ticket_alert:
+        disable: true
+  - name: movie-details-availability
+    objective: 99
+    description: Successful movie details requests.
+    sli:
+      events:
+        error_query: sum(rate(cinema_sli_requests_total{operation="movie_details",result="bad"}[{{.window}}]))
+        total_query: sum(rate(cinema_sli_requests_total{operation="movie_details"}[{{.window}}]))
+    alerting:
+      name: CinemaMovieDetailsAvailability
+      page_alert:
+        disable: true
+      ticket_alert:
+        disable: true
+  - name: cinema-list-availability
+    objective: 99
+    description: Successful cinema list requests.
+    sli:
+      events:
+        error_query: sum(rate(cinema_sli_requests_total{operation="cinema_list",result="bad"}[{{.window}}]))
+        total_query: sum(rate(cinema_sli_requests_total{operation="cinema_list"}[{{.window}}]))
+    alerting:
+      name: CinemaListAvailability
+      page_alert:
+        disable: true
+      ticket_alert:
+        disable: true
+  - name: screening-availability
+    objective: 99
+    description: Successful screening and seat map requests.
+    sli:
+      events:
+        error_query: sum(rate(cinema_sli_requests_total{operation=~"screenings|seat_map",result="bad"}[{{.window}}]))
+        total_query: sum(rate(cinema_sli_requests_total{operation=~"screenings|seat_map"}[{{.window}}]))
+    alerting:
+      name: CinemaScreeningAvailability
+      page_alert:
+        disable: true
+      ticket_alert:
+        disable: true
+  - name: authentication-availability
+    objective: 99
+    description: Successful authentication service responses.
+    sli:
+      events:
+        error_query: sum(rate(cinema_sli_requests_total{operation="authentication",result="bad"}[{{.window}}]))
+        total_query: sum(rate(cinema_sli_requests_total{operation="authentication"}[{{.window}}]))
+    alerting:
+      name: CinemaAuthenticationAvailability
+      page_alert:
+        disable: true
+      ticket_alert:
+        disable: true
+  - name: registration-availability
+    objective: 99
+    description: Successful registration service responses.
+    sli:
+      events:
+        error_query: sum(rate(cinema_sli_requests_total{operation="registration",result="bad"}[{{.window}}]))
+        total_query: sum(rate(cinema_sli_requests_total{operation="registration"}[{{.window}}]))
+    alerting:
+      name: CinemaRegistrationAvailability
+      page_alert:
+        disable: true
+      ticket_alert:
+        disable: true
+  - name: ticket-history-availability
+    objective: 99
+    description: Successful ticket history requests.
+    sli:
+      events:
+        error_query: sum(rate(cinema_sli_requests_total{operation="ticket_history",result="bad"}[{{.window}}]))
+        total_query: sum(rate(cinema_sli_requests_total{operation="ticket_history"}[{{.window}}]))
+    alerting:
+      name: CinemaTicketHistoryAvailability
+      page_alert:
+        disable: true
+      ticket_alert:
+        disable: true
+  - name: admin-catalog-availability
+    objective: 99
+    description: Successful admin catalog requests.
+    sli:
+      events:
+        error_query: sum(rate(cinema_sli_requests_total{operation="admin_catalog",result="bad"}[{{.window}}]))
+        total_query: sum(rate(cinema_sli_requests_total{operation="admin_catalog"}[{{.window}}]))
+    alerting:
+      name: CinemaAdminCatalogAvailability
+      page_alert:
+        disable: true
+      ticket_alert:
+        disable: true
+  - name: booking-availability
+    objective: 99
+    description: Successful ticket booking requests.
+    sli:
+      events:
+        error_query: sum(rate(cinema_sli_requests_total{operation="booking",result="bad"}[{{.window}}]))
+        total_query: sum(rate(cinema_sli_requests_total{operation="booking"}[{{.window}}]))
+    alerting:
+      name: CinemaBookingAvailability
+      page_alert:
+        disable: true
+      ticket_alert:
+        disable: true
+  - name: booking-under-one-second
+    objective: 95
+    description: Ticket booking requests completed successfully in one second or less.
+    sli:
+      events:
+        error_query: sum(rate(cinema_booking_attempts_total[{{.window}}])) - sum(rate(cinema_booking_duration_seconds_bucket{le="1.0"}[{{.window}}]))
+        total_query: sum(rate(cinema_booking_attempts_total[{{.window}}]))
+    alerting:
+      name: CinemaBookingLatency
+      page_alert:
+        disable: true
+      ticket_alert:
+        disable: true
