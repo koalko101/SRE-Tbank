@@ -7,6 +7,8 @@ config:
       timeout: 5s
       http:
         method: GET
+        headers:
+          X-Synthetic-Probe: cinema-blackbox
         valid_status_codes:
           - 200
         preferred_ip_protocol: ip4

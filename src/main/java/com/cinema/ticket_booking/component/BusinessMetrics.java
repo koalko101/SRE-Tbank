@@ -1,6 +1,7 @@
 package com.cinema.ticket_booking.component;
 
 import java.util.function.Supplier;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.stereotype.Component;
 
@@ -23,9 +24,11 @@ public class BusinessMetrics {
     private final Counter movieSearches;
 
     private final Timer bookingDurationSeconds;
+    private final MeterRegistry registry;
 
     
     public BusinessMetrics(MeterRegistry registry) {
+        this.registry = registry;
         registeredSuccess = registry.counter("cinema.registered.success");
         registeredFailure = registry.counter("cinema.registered.failed");
         authSuccess = registry.counter("cinema.auth.success");
@@ -75,7 +78,20 @@ public class BusinessMetrics {
     }
 
     public <T> T durationBooking(Supplier<T> operation) {
-        return bookingDurationSeconds.record(operation);
+        long startNanos = System.nanoTime();
+        T result = operation.get();
+        bookingDurationSeconds.record(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+        return result;
+    }
+
+    public void recordApiRequest(String operation, int status) {
+        boolean good = status < 500 && status != 429;
+        Counter.builder("cinema.sli.requests")
+                .tag("operation", operation)
+                .tag("result", good ? "good" : "bad")
+                .register(registry)
+                .increment();
+
     }
 
 
