@@ -1,5 +1,6 @@
 HELP.md
 .env
+k8s/overlays/minikube/secrets.env
 *.mp4
 .gitignore
 target/

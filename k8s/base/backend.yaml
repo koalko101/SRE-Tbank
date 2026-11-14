@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: cinema
+spec:
+  replicas: 2
+  strategy: { type: RollingUpdate }
+  selector:
+    matchLabels: { app: backend }
+  template:
+    metadata:
+      labels:
+        app: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+        - name: backend
+          image: cinema-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8080 }
+            - { name: management, containerPort: 8081 }
+          env:
+          envFrom:
+            - configMapRef:
+                name: cinema-config
+            - secretRef:
+                name: cinema-secrets
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: management }
+            initialDelaySeconds: 25
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: management }
+            initialDelaySeconds: 45
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 768Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: cinema
+spec:
+  selector: { app: backend }
+  ports: [{ port: 8080, targetPort: 8080 }]

@@ -16,6 +16,8 @@ metadata:
   namespace: cinema
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: postgres
@@ -37,12 +39,12 @@ spec:
             - name: POSTGRES_DB
               valueFrom:
                 configMapKeyRef:
-                  name: cinema-config
+                  name: postgres-config
                   key: DB_NAME
             - name: POSTGRES_USER
               valueFrom:
                 configMapKeyRef:
-                  name: cinema-config
+                  name: postgres-config
                   key: DB_USER
             - name: POSTGRES_PASSWORD
               valueFrom:
@@ -69,14 +71,14 @@ spec:
             - name: DB_NAME
               valueFrom:
                 configMapKeyRef:
-                  name: cinema-config
+                  name: postgres-config
                   key: DB_NAME
             - name: DATA_SOURCE_URI
               value: "localhost:5432/$(DB_NAME)?sslmode=disable"
             - name: DATA_SOURCE_USER
               valueFrom:
                 configMapKeyRef:
-                  name: cinema-config
+                  name: postgres-config
                   key: DB_USER
             - name: DATA_SOURCE_PASS
               valueFrom:

@@ -1,8 +1,6 @@
-# Запуск приложения в Minikube
+# Развёртывание Cinema в Minikube
 
-## Требования
-
-Установите Docker, Minikube, kubectl, Helm и Bash. Все команды запускаются из корня репозитория.
+Команды выполняются из корня репозитория. Нужны Docker, Minikube, kubectl, Kustomize (или версия kubectl со встроенным Kustomize), Helm и Bash.
 
 ## Приложение
 
@@ -11,23 +9,33 @@ minikube start
 eval "$(minikube -p minikube docker-env)"
 docker build -t cinema-backend:latest .
 docker build -t cinema-frontend:latest ./frontend
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -n cinema -f k8s/
+cp k8s/overlays/minikube/secrets.env.example k8s/overlays/minikube/secrets.env
+```
+
+Перед применением замените значения `DB_PASSWORD` и `JWT_SECRET` в `k8s/overlays/minikube/secrets.env`. Файл исключён из Git. Если JWT-секрет из старого `.env.example` когда-либо использовался, замените его.
+
+```bash
+kubectl apply -k k8s/overlays/minikube
 kubectl -n cinema rollout status deployment/backend
 kubectl -n cinema rollout status deployment/frontend
 kubectl -n cinema get pods,services
+kubectl -n cinema delete configmap cinema-config --ignore-not-found
+kubectl -n cinema delete secret cinema-secrets --ignore-not-found
 ```
 
-Чтобы назначить администратора приложения, укажите зарегистрированный email в нижнем регистре в `ADMIN_EMAIL` в `k8s/config.yaml`, затем выполните:
+Общие параметры находятся в `k8s/base/config/app.env`, параметры базы данных — в `k8s/base/config/postgres.env`. После изменения ConfigMap Kustomize меняет его имя с хешем и обновляет ссылки в Pod шаблонах. Применяйте каталог overlay повторно:
 
 ```bash
-kubectl apply -f k8s/config.yaml
-kubectl -n cinema rollout restart deployment/backend
+kubectl apply -k k8s/overlays/minikube
 ```
 
-## Мониторинг
+Для удаления устаревших ConfigMap после нескольких применений используйте метку `app.kubernetes.io/part-of=cinema`:
 
-Добавьте Helm-репозитории и установите VictoriaMetrics и Blackbox Exporter:
+```bash
+kubectl apply -k k8s/overlays/minikube --prune -l app.kubernetes.io/part-of=cinema --prune-allowlist=core/v1/ConfigMap
+```
+
+## Мониторинг и логирование
 
 ```bash
 helm repo add vm https://victoriametrics.github.io/helm-charts/
@@ -36,67 +44,41 @@ helm repo add grafana-community https://grafana-community.github.io/helm-charts
 helm repo update
 helm upgrade --install vm-single vm/victoria-metrics-single --version 0.49.0 --namespace monitoring --create-namespace --values observability/monitoring/victoria-metrics.yaml
 helm upgrade --install blackbox-exporter prometheus-community/prometheus-blackbox-exporter --namespace monitoring --values observability/blackbox-exporter.yaml
-kubectl -n monitoring rollout status statefulset/vm-single-victoria-metrics-single-server
-kubectl apply -f k8s/observability/
-```
-
-Конфигурация VictoriaMetrics в `observability/monitoring/victoria-metrics.yaml` собирает метрики pod-ов с аннотацией `prometheus.io/scrape`, включая backend и Postgres exporter. Blackbox Exporter проверяет доступность каталога через frontend.
-
-Grafana устанавливается вместе с ConfigMap дашборда скриптом:
-
-```bash
 bash observability/grafana/deploy.sh
+kubectl apply -k k8s/observability/logging
 ```
 
-При первом запуске скрипт запросит пароль администратора Grafana и создаст Secret `grafana-admin` в namespace `monitoring`. Существующий Secret будет использован повторно. Для автоматизированного запуска пароль можно передать через переменную `GRAFANA_ADMIN_PASSWORD`.
-
-Установите Sloth recording rules и vmalert:
+Правила SLO формируются Sloth и сохраняются в каталог с Kustomization:
 
 ```bash
 bash observability/slo/deploy-rules.sh
 ```
 
-Откройте Grafana:
+Скрипт проверяет и генерирует правила в `k8s/observability/slo/rules.yaml`, затем применяет monitoring и logging Kustomization. Изменение правил создаёт ConfigMap с новым хешем и обновляет vmalert.
+
+Откройте Grafana и VictoriaMetrics в отдельных терминалах:
 
 ```bash
-kubectl -n monitoring rollout status deployment/grafana
 kubectl -n monitoring port-forward svc/grafana 3000:80
-```
-
-Перейдите на `http://localhost:3000`, войдите как `admin` с заданным паролем и откройте дашборд `Cinema SLI SLO SLA`. Графики SLI/SLO заполняются по мере поступления запросов к приложению.
-
-Для проверки метрик VictoriaMetrics откройте в отдельном терминале:
-
-```bash
 kubectl -n monitoring port-forward svc/vm-single-victoria-metrics-single-server 8428:8428
 ```
 
-Затем выполните запросы:
+Панель называется `Cinema SLI SLO SLA`. Логи и правила vmalert находятся в namespace `logging`; метрики, дашборд и SLO — в `monitoring`.
 
-```bash
-curl "http://localhost:8428/api/v1/query?query=up"
-curl "http://localhost:8428/api/v1/label/__name__/values"
-```
+Правила SLO генерируют алертные условия, но доставка page/ticket уведомлений отключена в Sloth-конфигурации до подключения и настройки Alertmanager.
 
 ## Демонстрация SLI/SLO/SLA
-
-Масштабируйте backend до трёх экземпляров:
 
 ```bash
 kubectl -n cinema scale deployment/backend --replicas=3
 kubectl -n cinema get pods -w
-```
-
-Отправляйте запросы к каталогу через frontend и наблюдайте за изменениями на дашборде. Для демонстрации ошибок каталога остановите PostgreSQL, продолжая отправлять запросы:
-
-```bash
 kubectl -n cinema scale deployment/postgres --replicas=0
 kubectl -n cinema scale deployment/postgres --replicas=1
 ```
 
-После восстановления PostgreSQL дождитесь готовности pod-а и продолжите запросы. Синтетические проверки Blackbox Exporter помечены заголовком `X-Synthetic-Probe` и учитываются отдельно в `probe_success`, без влияния на пользовательские request-based SLI.
+Отправляйте запросы к каталогу через frontend и наблюдайте показатели. Blackbox-запросы помечаются заголовком `X-Synthetic-Probe` и учитываются отдельно от пользовательских SLI. Проверка синтетического probe SLO строится по `probe_success` за выбранное окно, а не по текущему моментальному значению.
 
-Для открытия интерфейса VictoriaMetrics используйте:
+Для интерфейса VictoriaMetrics:
 
 ```bash
 bash k8s/observability/vmui.sh

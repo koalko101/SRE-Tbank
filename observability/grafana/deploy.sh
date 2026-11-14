@@ -50,7 +50,7 @@ if ! kubectl get secret grafana-admin --namespace monitoring >/dev/null 2>&1; th
     -o yaml | kubectl apply -f -
 fi
 
-kubectl apply -f k8s/observability/grafana-dashboard.yaml
+kubectl apply -k k8s/observability/monitoring
 
 helm upgrade --install grafana grafana-community/grafana \
   --namespace monitoring \

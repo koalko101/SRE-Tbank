@@ -33,7 +33,7 @@ data:
           "id": 2,
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single"}},
           "targets": [
-            {"expr": "sum(rate(cinema_booking_duration_seconds_bucket{le=\"1.0\"}[$__rate_interval])) / sum(rate(cinema_booking_attempts_total[$__rate_interval]))", "legendFormat": "Bookings within 1s", "refId": "A"},
+            {"expr": "sum(rate(cinema_booking_duration_seconds_bucket{le=\"1.0\"}[$__rate_interval])) / sum(rate(cinema_booking_duration_seconds_count[$__rate_interval]))", "legendFormat": "Bookings within 1s", "refId": "A"},
             {"expr": "1 - slo:sli_error:ratio_rate30d{sloth_service=\"cinema\",sloth_slo=\"booking-under-one-second\"}", "legendFormat": "Booking latency SLO (30d)", "refId": "B"},
             {"expr": "slo:objective:ratio{sloth_service=\"cinema\",sloth_slo=\"booking-under-one-second\"}", "legendFormat": "Booking latency target", "refId": "C"}
           ],
@@ -47,7 +47,7 @@ data:
           "id": 3,
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single"}},
           "targets": [
-            {"expr": "sum(increase(cinema_sli_requests_total{result=\"good\"}[30d])) / sum(increase(cinema_sli_requests_total[30d]))", "legendFormat": "30d request success", "refId": "A"},
+            {"expr": "min(1 - slo:sli_error:ratio_rate30d{sloth_service=\"cinema\",sloth_slo=~\"authentication-availability|booking-availability\"})", "legendFormat": "Critical flows 30d availability", "refId": "A"},
             {"expr": "vector(0.985)", "legendFormat": "SLA 98.5%", "refId": "B"}
           ],
           "title": "Monthly aggregate SLA",
@@ -60,7 +60,7 @@ data:
           "id": 4,
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single"}},
           "targets": [
-            {"expr": "min(probe_success)", "legendFormat": "API probe", "refId": "A"},
+            {"expr": "1 - slo:sli_error:ratio_rate30d{sloth_service=\"cinema\",sloth_slo=\"catalog-probe-availability\"}", "legendFormat": "API probe 30d availability", "refId": "A"},
             {"expr": "vector(0.995)", "legendFormat": "Probe SLO 99.5%", "refId": "B"}
           ],
           "title": "External API probe",

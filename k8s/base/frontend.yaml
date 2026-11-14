@@ -16,7 +16,11 @@ spec:
           imagePullPolicy: IfNotPresent
           ports: [{ containerPort: 80 }]
           env:
-            - { name: ITEMS_PER_PAGE, valueFrom: { configMapKeyRef: { name: cinema-config, key: ITEMS_PER_PAGE } } }
+            - name: ITEMS_PER_PAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: cinema-config
+                  key: ITEMS_PER_PAGE
           readinessProbe:
             httpGet: { path: /, port: 80 }
             periodSeconds: 10

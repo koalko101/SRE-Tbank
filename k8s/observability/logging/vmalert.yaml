@@ -1,26 +1,4 @@
 
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: vmalert-rules
-  namespace: logging
-data:
-  alerts.yaml: |
-    groups:
-      - name: cinema-auth
-        type: vlogs
-        interval: 1m
-        rules:
-          - alert: TooManyFailedLogins
-            expr: '_time:5m kubernetes.pod_namespace:="cinema" kubernetes.container_name:="backend" event:="auth.login.failure" | stats count() as failures | filter failures:>5'
-            for: 1m
-            labels:
-              severity: warning
-              service: cinema-backend
-            annotations:
-              summary: "Too many failed login attempts"
-              description: "More than 5 failed logins in 5 minutes. Current count: {{ $value }}"
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
