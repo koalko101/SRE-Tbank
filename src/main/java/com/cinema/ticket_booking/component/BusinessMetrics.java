@@ -85,7 +85,7 @@ public class BusinessMetrics {
     }
 
     public void recordApiRequest(String operation, int status) {
-        boolean good = status < 500 && status != 429;
+        boolean good = status < 500;
         Counter.builder("cinema.sli.requests")
                 .tag("operation", operation)
                 .tag("result", good ? "good" : "bad")

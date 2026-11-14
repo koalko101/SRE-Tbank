@@ -20,7 +20,7 @@ import java.util.List;
 
 @Slf4j
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 1)
+@Order(Ordered.HIGHEST_PRECEDENCE + 2)
 public class RateLimitFilter extends OncePerRequestFilter {
     private static final DefaultRedisScript<Long> WINDOW_SCRIPT = new DefaultRedisScript<>(
             "local count = redis.call('INCR', KEYS[1]); "
