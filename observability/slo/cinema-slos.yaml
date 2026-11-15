@@ -14,10 +14,22 @@ slos:
         total_query: sum(rate(cinema_sli_requests_total{operation=~"catalog|movie_search|movie_details|cinema_list|screenings|seat_map"}[{{.window}}]))
     alerting:
       name: CinemaBrowseAvailability
+      labels:
+        service: cinema
+        team: cinema
       page_alert:
-        disable: true
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cinema: критическая деградация просмотра каталога"
+          description: "Доступность пользовательских сценариев просмотра каталога, поиска фильмов, получения информации о фильмах, кинотеатрах, сеансах или схемы мест значительно ниже целевого уровня. Требуется немедленная проверка. Проверьте доступность backend, состояние PostgreSQL, ошибки HTTP и логи приложения. Убедитесь, что проблема не затрагивает все операции одновременно."
       ticket_alert:
-        disable: true
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cinema: ухудшение доступности каталога"
+          description: "Увеличивается количество неуспешных запросов при просмотре каталога, поиске фильмов, получении информации о кинотеатрах, сеансах или схемы мест. Если тенденция сохранится, будет исчерпан бюджет ошибок SLO. Проверьте частоту HTTP 5xx, время ответа backend, состояние PostgreSQL и последние изменения приложения."
+
   - name: authentication-availability
     objective: 99.5
     description: Successful authentication and registration service responses.
@@ -27,10 +39,22 @@ slos:
         total_query: sum(rate(cinema_sli_requests_total{operation=~"authentication|registration"}[{{.window}}]))
     alerting:
       name: CinemaAuthenticationAvailability
+      labels:
+        service: cinema
+        team: cinema
       page_alert:
-        disable: true
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cinema: критическая деградация авторизации"
+          description: "Пользователи не могут нормально войти в систему или зарегистрироваться. Немедленно проверьте доступность backend, подключение к PostgreSQL, состояние Valkey и работу механизма ограничения частоты запросов (rate limiting). Проверьте ошибки HTTP 5xx, 401, 429 и логи authentication/registration."
       ticket_alert:
-        disable: true
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cinema: увеличивается количество ошибок авторизации"
+          description: "Растёт доля неуспешных операций входа и регистрации. При сохранении текущей тенденции бюджет ошибок SLO будет исчерпан раньше установленного срока. Проверьте ошибки PostgreSQL, доступность Valkey, срабатывания rate limiting и последние изменения в backend."
+
   - name: booking-availability
     objective: 99.5
     description: Successful booking and ticket history requests.
@@ -40,10 +64,22 @@ slos:
         total_query: sum(rate(cinema_sli_requests_total{operation=~"booking|ticket_history"}[{{.window}}]))
     alerting:
       name: CinemaBookingAvailability
+      labels:
+        service: cinema
+        team: cinema
       page_alert:
-        disable: true
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cinema: критическая деградация бронирования билетов"
+          description: "Пользователи не могут стабильно бронировать билеты или просматривать историю покупок. Требуется немедленное расследование. Проверьте доступность PostgreSQL, состояние транзакций, блокировки строк, конфликты бронирования и ошибки backend. Особое внимание уделите целостности данных: исключите повторное бронирование одного места."
       ticket_alert:
-        disable: true
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cinema: увеличивается количество ошибок бронирования"
+          description: "Растёт доля неуспешных операций бронирования билетов или получения истории покупок. Бюджет ошибок SLO расходуется быстрее допустимого. Проверьте ошибки SQL, конкурирующие транзакции, блокировки, ограничения целостности и логи backend."
+
   - name: booking-under-one-second
     objective: 95
     description: Successful ticket bookings completed in one second or less.
@@ -53,10 +89,22 @@ slos:
         total_query: sum(rate(cinema_booking_duration_seconds_count[{{.window}}]))
     alerting:
       name: CinemaBookingLatency
+      labels:
+        service: cinema
+        team: cinema
       page_alert:
-        disable: true
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cinema: критическое увеличение времени бронирования"
+          description: "Значительная часть успешных бронирований выполняется дольше одной секунды. Пользователи сталкиваются с задержками при покупке билетов. Проверьте latency PostgreSQL, длительность транзакций, блокировки, нагрузку CPU и использование потоков backend. Определите наиболее медленные этапы обработки запроса."
       ticket_alert:
-        disable: true
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cinema: бронирование билетов замедляется"
+          description: "Увеличивается доля успешных бронирований, выполняемых дольше одной секунды. Это указывает на ухудшение производительности сервиса. Проверьте динамику времени SQL-запросов, нагрузку PostgreSQL, использование CPU и памяти backend, а также изменения в последних релизах."
+
   - name: catalog-probe-availability
     objective: 99.5
     description: Successful synthetic requests to the public movie catalog endpoint.
@@ -66,7 +114,18 @@ slos:
         total_query: sum(count_over_time(probe_success{job="cinema-prober"}[{{.window}}]))
     alerting:
       name: CinemaCatalogProbeAvailability
+      labels:
+        service: cinema
+        team: cinema
       page_alert:
-        disable: true
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cinema: публичный каталог недоступен"
+          description: "Внешняя синтетическая проверка не может успешно получить каталог фильмов. Пользователи могут не иметь доступа к основному функционалу приложения. Немедленно проверьте frontend, ingress или NodePort, доступность backend, DNS и сетевое взаимодействие между компонентами. Проверьте логи blackbox-exporter и результаты probe."
       ticket_alert:
-        disable: true
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cinema: обнаружены проблемы внешней доступности каталога"
+          description: "Внешняя проверка периодически завершается ошибкой. Возможны нестабильная работа frontend, сетевые проблемы или периодические сбои backend. Проверьте probe_success, probe_duration_seconds, доступность endpoint, сетевые ошибки и логи компонентов приложения."
