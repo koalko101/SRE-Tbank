@@ -4,12 +4,6 @@ kind: Kustomization
 resources:
   - victoria-logs.yaml
   - victoria-logs-collector.yaml
-  - vmalert.yaml
-
-configMapGenerator:
-  - name: vmalert-rules
-    files:
-      - alerts.yaml=config/alerts.yaml
 
 labels:
   - pairs:

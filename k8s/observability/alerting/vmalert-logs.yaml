@@ -19,11 +19,11 @@ spec:
           image: victoriametrics/vmalert:v1.151.0
           imagePullPolicy: IfNotPresent
           args:
-            - -rule=/etc/vmalert/rules/alerts.yaml
+            - -rule=/etc/vmalert/rules/*.yaml
             - -datasource.url=http://victoria-logs.logging.svc.cluster.local:9428
             - -rule.defaultRuleType=vlogs
+            - -notifier.url=http://alertmanager.monitoring.svc.cluster.local:9093
             - -httpListenAddr=:8880
-            - -notifier.blackhole=true
           ports:
             - name: http
               containerPort: 8880
