@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - alertmanager.yaml
+  - vmalert-logs.yaml
+  - vmalert-metrics.yaml
+
+secretGenerator:
+  - name: telegram-secrets
+    namespace: monitoring 
+    envs:
+      - telegram.env
+
+configMapGenerator:
+  - name: alertmanager-config
+    namespace: monitoring
+    files:
+      - alertmanager.yml=config/alertmanager.yml
+
+  - name: vmalert-logs-rules
+    namespace: logging
+    files:
+      - alerts.yaml=config/alerts.yaml
+
+  - name: vmalert-metrics-rules
+    namespace: monitoring
+    files:
+      - slo-alerts.yaml=config/slo-alerts.yaml
+      - runtime-alerts.yaml=config/runtime-alerts.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: cinema-monitoring
+    includeSelectors: false

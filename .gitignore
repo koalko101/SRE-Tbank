@@ -1,6 +1,7 @@
 HELP.md
 .env
 k8s/overlays/minikube/secrets.env
+k8s/observability/alerting/telegram.env
 *.mp4
 .gitignore
 target/

@@ -1,0 +1,41 @@
+groups:
+  - name: cinema-runtime
+    interval: 30s
+    rules:
+      - alert: BackendDbConnectionTimeouts
+        expr: sum by (pod) (increase(hikaricp_connections_timeout_total{namespace="cinema", app="backend"}[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: cinema
+        annotations:
+          summary: "Backend не может получить соединение с БД ({{ $labels.pod }})"
+          description: >-
+            За 5 минут зафиксировано {{ $value | printf "%.0f" }} таймаутов получения
+            соединения из HikariCP. Проверьте PostgreSQL.
+
+      - alert: BackendJvmHeapHigh
+        expr: |
+          jvm_memory_used_bytes{namespace="cinema", app="backend", area="heap", id=~"G1 Old Gen|Tenured Gen"}
+            / jvm_memory_max_bytes{namespace="cinema", app="backend", area="heap", id=~"G1 Old Gen|Tenured Gen"}
+          > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          service: cinema
+        annotations:
+          summary: "Heap JVM заполнен более чем на 85% ({{ $labels.pod }})"
+          description: >-
+            Old-gen пула занят на {{ $value | humanizePercentage }} уже 10 минут.
+            Риск OutOfMemoryError и частых full GC.
+
+      - alert: BackendReplicasDown
+        expr: (sum(up{job="kubernetes-pods", namespace="cinema", app="backend"}) or vector(0)) < 2
+        for: 2m
+        labels:
+          severity: critical
+          service: cinema
+        annotations:
+          summary: "Backend: доступных Actuator-таргетов меньше 2"
+          description: >-
+            Prometheus видит {{ $value }} живых экземпляров backend (ожидается 2).
