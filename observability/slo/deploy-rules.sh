@@ -9,7 +9,7 @@ mkdir -p "$(dirname "$rules_out")" "$(dirname "$alerts_out")"
 
 if ! command -v sloth >/dev/null 2>&1; then
   sloth() {
-    docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/workspace" -w /workspace ghcr.io/slok/sloth:v0.16.0 "$@"
+    docker run --rm --user "$(id -u):$(id -g)" -v "$(pwd -P):/workspace" -w /workspace ghcr.io/slok/sloth:v0.16.0 "$@"
   }
 fi
 

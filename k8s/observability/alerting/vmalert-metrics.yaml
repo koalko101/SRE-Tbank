@@ -2,17 +2,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vmalert
-  namespace: logging
+  name: vmalert-metrics
+  namespace: monitoring
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: vmalert
+      app: vmalert-metrics
   template:
     metadata:
       labels:
-        app: vmalert
+        app: vmalert-metrics
     spec:
       containers:
         - name: vmalert
@@ -42,17 +42,17 @@ spec:
       volumes:
         - name: rules
           configMap:
-            name: vmalert-rules
+            name: vmalert-metrics-rules
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: vmalert
+  name: vmalert-metrics
   namespace: monitoring
 spec:
   type: ClusterIP
   selector:
-    app: vmalert
+    app: vmalert-metrics
   ports:
     - name: http
       port: 8880

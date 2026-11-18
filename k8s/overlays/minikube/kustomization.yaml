@@ -6,6 +6,7 @@ resources:
 
 secretGenerator:
   - name: cinema-secrets
+    namespace: cinema
     envs:
       - secrets.env
 

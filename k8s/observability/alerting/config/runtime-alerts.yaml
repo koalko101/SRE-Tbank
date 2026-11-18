@@ -39,3 +39,21 @@ groups:
           summary: "Backend: доступных Actuator-таргетов меньше 2"
           description: >-
             Prometheus видит {{ $value }} живых экземпляров backend (ожидается 2).
+
+      - alert: BackendHttp5xxErrorRate
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{namespace="cinema", app="backend", status=~"5.."}[2m]))
+            /
+            sum(rate(http_server_requests_seconds_count{namespace="cinema", app="backend"}[2m]))
+          ) * 100 > 5
+        for: 1m
+        labels:
+          severity: critical
+          service: cinema
+        annotations:
+          summary: "Высокий процент ошибок HTTP 5xx в Backend"
+          description: >-
+            Доля ошибок HTTP 5xx составляет {{ $value | printf "%.1f" }}% за последние 2 минуты.
+            Проверьте дашборд сервиса и логи подов backend.
+

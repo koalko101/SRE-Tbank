@@ -41,7 +41,7 @@ spec:
       volumes:
         - name: rules
           configMap:
-            name: vmalert-rules
+            name: vmalert-logs-rules
 ---
 apiVersion: v1
 kind: Service

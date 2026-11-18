@@ -1,0 +1,48 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: telegram
+  group_by: [alertname, severity, service]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: [severity="critical"]
+      receiver: telegram
+      group_wait: 10s
+      repeat_interval: 1h
+
+inhibit_rules:
+  - source_matchers: [severity="critical"]
+    target_matchers: [severity="warning"]
+    equal: [service]
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - bot_token_file: /etc/alertmanager-secrets/token
+        chat_id_file: /etc/alertmanager-secrets/chat_id
+        parse_mode: HTML
+        send_resolved: true
+        message: |-
+          {{- if eq .Status "firing" -}}
+            {{- if eq .CommonLabels.severity "critical" }}🚨 <b>[CRITICAL]</b>
+            {{- else if eq .CommonLabels.severity "warning" }}⚠️ <b>[WARNING]</b>
+            {{- else }}🔥 <b>[FIRING]</b>{{- end -}}
+          {{- else -}}
+            ✅ <b>[RESOLVED]</b>
+          {{- end }} · <b>{{- if .CommonLabels.service }}{{ .CommonLabels.service }}{{- else }}system{{- end }}</b>
+
+          {{- range .Alerts }}
+
+          📌 <b>{{ .Labels.alertname }}</b>
+          {{- if .Annotations.summary }}
+          📝 <i>{{ .Annotations.summary }}</i>
+          {{- end }}
+          {{- if .Annotations.description }}
+          💬 {{ .Annotations.description }}
+          {{- end }}
+          🕒 <code>{{ .StartsAt.Format "15:04:05 02.01.2006" }}</code>
+          {{- end }}
+
