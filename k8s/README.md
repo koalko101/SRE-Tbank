@@ -65,7 +65,49 @@ kubectl -n monitoring port-forward svc/vm-single-victoria-metrics-single-server 
 
 Панель называется `Cinema SLI SLO SLA`. Логи и правила vmalert находятся в namespace `logging`; метрики, дашборд и SLO — в `monitoring`.
 
-Правила SLO генерируют алертные условия, но доставка page/ticket уведомлений отключена в Sloth-конфигурации до подключения и настройки Alertmanager.
+## Алерты и уведомления
+
+Алертинг развёртывается Kustomize вместе с остальной observability-конфигурацией. Для отправки уведомлений используется Telegram: Alertmanager принимает события от двух экземпляров `vmalert` — один вычисляет метрики и SLO в namespace `monitoring`, второй выполняет LogsQL-правила по логам в `logging`.
+
+Перед первым применением создайте локальный файл с учётными данными бота. Не коммитьте его: путь уже добавлен в `.gitignore`.
+
+```bash
+cp k8s/observability/alerting/telegram.env.example k8s/observability/alerting/telegram.env
+# Отредактируйте telegram.env: укажите токен Telegram-бота и chat ID.
+kubectl apply -k k8s/observability/alerting
+kubectl -n monitoring rollout status deployment/alertmanager
+kubectl -n monitoring rollout status deployment/vmalert-metrics
+kubectl -n logging rollout status deployment/vmalert
+kubectl -n monitoring get configmaps,deployments,services
+```
+
+Файл `telegram.env` содержит две строки `TG_BOT_TOKEN=...` и `CHAT_ID=...`. Kustomize создаёт из него Secret `telegram-secrets`, монтируемый Alertmanager только для чтения. Настройки маршрутизации и шаблон сообщений находятся в `k8s/observability/alerting/config/alertmanager.yml`. Критические уведомления отправляются после 10 секунд группировки и повторяются раз в час; предупреждения группируются 30 секунд и повторяются раз в 4 часа. При критическом алерте предупреждения того же сервиса подавляются. Отправляются и события `firing`, и `resolved`.
+
+Правила хранятся в `k8s/observability/alerting/config/`:
+
+- `runtime-alerts.yaml`: таймауты HikariCP, заполнение old-gen JVM выше 85% в течение 10 минут, менее двух доступных Actuator-целей в течение 2 минут и доля HTTP 5xx выше 5% в течение 1 минуты. Первые три помогают обнаружить проблемы БД, риск нехватки памяти и потерю реплик; 5xx показывает влияние ошибок на запросы.
+- `slo-alerts.yaml`: сгенерированные Sloth multi-window burn-rate алерты для доступности пользовательских сценариев. Критическое срабатывание означает быстрое расходование error budget, предупреждение — устойчивое ухудшение.
+- `alerts.yaml`: LogsQL-алерт на более чем 500 неуспешных входов за 5 минут, который помогает заметить всплеск ошибок аутентификации.
+
+Для просмотра входящих событий откройте Telegram-чат, указанный в `CHAT_ID`. Для проверки состояния правил и Alertmanager можно временно открыть их интерфейсы:
+
+```bash
+kubectl -n monitoring port-forward svc/alertmanager 9093:9093
+kubectl -n monitoring port-forward svc/vmalert-metrics 8880:8880
+kubectl -n logging port-forward svc/vmalert 8881:8880
+```
+
+После этого доступны страницы [Alertmanager](http://localhost:9093), [vmalert metrics](http://localhost:8880) и vmalert логов на `http://localhost:8881`. Изменения правил или маршрутизации применяются повторно той же командой `kubectl apply -k k8s/observability/alerting`.
+
+### Скриншоты срабатываний
+
+В `imgs/5.jpg`–`imgs/7.jpg` приведены реальные Telegram-уведомления о срабатывании и восстановлении алертов: доступность каталога, число backend-реплик, HTTP 5xx и таймауты подключений к PostgreSQL.
+
+![Критические алерты и восстановление backend-реплик в Telegram](../imgs/5.jpg)
+
+![HTTP 5xx и таймауты HikariCP в Telegram](../imgs/6.jpg)
+
+![Восстановление сервиса и повторное срабатывание алерта реплик](../imgs/7.jpg)
 
 ## Демонстрация SLI/SLO/SLA
 
